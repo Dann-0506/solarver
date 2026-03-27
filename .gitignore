@@ -1,0 +1,14 @@
+# Entornos virtuales de Python
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Variables de entorno (¡Nunca subas tus contraseñas de BD a GitHub!)
+.env
+
+# Archivos propios del sistema operativo o editores de código
+.vscode/
+.DS_Store
