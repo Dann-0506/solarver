@@ -1,0 +1,111 @@
+<!--
+  Archivo: frontend/partials/tab-pagos.html
+-->
+<div class="section-header" style="margin-bottom:20px">
+  <h3>Pagos y cobros</h3>
+  <button class="btn-primary" style="font-size:.82rem;padding:9px 18px" onclick="abrirModalPago()">
+    + Registrar pago
+  </button>
+</div>
+<div style="background:white;border-radius:14px;border:1px solid var(--border);overflow:hidden">
+  <table style="width:100%;border-collapse:collapse">
+    <thead>
+      <tr style="background:var(--bg)">
+        <th style="padding:12px 16px;text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Folio</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Cliente</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Monto</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Método</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Fecha</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Saldo restante</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Estatus</th>
+      </tr>
+    </thead>
+    <tbody id="pagosTableBody">
+      <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Cargando...</td></tr>
+    </tbody>
+  </table>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--border)">
+    <span id="pagosInfo" style="font-size:.82rem;color:var(--muted)"></span>
+    <div id="pagosBtns" style="display:flex;gap:4px"></div>
+  </div>
+</div>
+
+<!-- Modal registrar pago -->
+<div class="modal-overlay" id="pagoModal">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="cerrarModalPago()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h3 style="margin-bottom:4px">Registrar pago</h3>
+    <p class="sub" style="margin-bottom:20px">Selecciona el cliente y completa los datos del abono.</p>
+    <div id="pagoAlert" style="display:none;padding:10px 14px;border-radius:8px;font-size:.82rem;font-weight:500;margin-bottom:14px;border-left:3px solid"></div>
+    <div id="pagoAdvertencia" style="display:none;padding:10px 14px;border-radius:8px;font-size:.82rem;font-weight:500;margin-bottom:14px;background:#FEF9EC;color:#F39C12;border-left:3px solid #F39C12"></div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="form-group">
+        <label>Cliente *</label>
+        <div style="position:relative">
+          <input type="text" id="pagoClienteBuscar" placeholder="Buscar por nombre o ID..." oninput="filtrarClientesPago()"
+            style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.88rem;box-sizing:border-box">
+          <div id="pagoClienteLista" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,0.1);margin-top:4px"></div>
+          <input type="hidden" id="pagoCliente">
+          <div id="pagoClienteSeleccionado" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(30,133,200,0.08);border-radius:8px;font-size:.84rem;font-weight:600;color:var(--blue-d)"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group">
+          <label>Saldo pendiente</label>
+          <div id="pagoSaldoDisp" style="padding:10px 14px;border-radius:10px;background:var(--bg);font-size:.9rem;font-weight:700;color:var(--error)">—</div>
+        </div>
+        <div class="form-group">
+          <label>Folio generado</label>
+          <div id="pagoFolioDisp" style="padding:10px 14px;border-radius:10px;background:var(--bg);font-size:.9rem;font-weight:600;color:var(--muted)">—</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group">
+          <label>Monto a pagar ($) *</label>
+          <input type="number" id="pagoMonto" min="0.01" step="0.01" placeholder="0.00" oninput="verificarMonto()"
+            style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.88rem">
+        </div>
+        <div class="form-group">
+          <label>Método de pago *</label>
+          <select id="pagoMetodo" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.88rem;background:white;color:var(--text)">
+            <option value="">Seleccionar...</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Cheque">Cheque</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Fecha de pago *</label>
+        <input type="date" id="pagoFecha" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.88rem">
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:20px">
+      <button class="btn-secondary" onclick="cerrarModalPago()">Cancelar</button>
+      <button class="btn-primary" id="btnGuardarPago" onclick="guardarPago()">Confirmar pago</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal comprobante de pago -->
+<div class="modal-overlay" id="comprobanteModal">
+  <div class="modal" style="max-width:420px;text-align:center">
+    <div style="width:60px;height:60px;border-radius:50%;background:#E8F8EF;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h3 style="margin-bottom:6px">¡Pago registrado!</h3>
+    <p class="sub" style="margin-bottom:24px">El pago fue confirmado exitosamente.</p>
+    <div style="background:var(--bg);border-radius:12px;padding:18px;text-align:left;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:.85rem"><span style="color:var(--muted)">Cliente</span><span id="cmpCliente" style="font-weight:600"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:.85rem"><span style="color:var(--muted)">Folio</span><span id="cmpFolio" style="font-weight:600;color:var(--blue-d);font-family:'Sora',sans-serif"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:.85rem"><span style="color:var(--muted)">Monto pagado</span><span id="cmpMonto" style="font-weight:700;color:var(--success)"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:.85rem"><span style="color:var(--muted)">Método</span><span id="cmpMetodo" style="font-weight:500"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:.85rem"><span style="color:var(--muted)">Fecha</span><span id="cmpFecha" style="font-weight:500"></span></div>
+      <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;font-size:.85rem"><span style="color:var(--muted)">Saldo restante</span><span id="cmpSaldo" style="font-weight:700"></span></div>
+    </div>
+    <button class="btn-primary" onclick="cerrarComprobante()" style="width:100%">Aceptar</button>
+  </div>
+</div>
