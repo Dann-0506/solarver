@@ -3,29 +3,8 @@ SolarVer – Utilidades de configuración inicial
 Ejecutar desde la carpeta backend/ con: python setup_dev.py
 """
 
-import bcrypt
 import os
 import sys
-
-def generar_hash(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12)).decode('utf-8')
-
-def generar_hashes_sql():
-    """Genera los INSERT con contraseñas hasheadas correctamente."""
-    usuarios = [
-        ('Admin SolarVer',    'admin',    'admin@solarver.com',    'Admin2024!',    1),
-        ('Empleado SolarVer', 'empleado', 'empleado@solarver.com', 'Empleado2024!', 2),
-    ]
-
-    print("\n── SQL con contraseñas hasheadas (pegar en pgAdmin o psql) ──\n")
-    print("-- Eliminar usuarios de prueba anteriores si existen")
-    print("DELETE FROM \"USUARIO\" WHERE \"Username\" IN ('admin', 'empleado');\n")
-
-    for nombre, username, correo, password, id_rol in usuarios:
-        hashed = generar_hash(password)
-        print(f"-- Usuario: {username} | Contraseña: {password}")
-        print(f"INSERT INTO \"USUARIO\" (\"Nombre\", \"Username\", \"Correo\", \"Contrasena\", \"Estado\", \"Id_Rol\")")
-        print(f"VALUES ('{nombre}', '{username}', '{correo}', '{hashed}', TRUE, {id_rol});\n")
 
 def crear_env():
     """Crea el archivo .env si no existe."""
@@ -85,10 +64,9 @@ if __name__ == '__main__':
     print("═══════════════════════════════════")
 
     opciones = {
-        '1': ('Generar SQL con contraseñas hasheadas', generar_hashes_sql),
-        '2': ('Crear archivo .env',                    crear_env),
-        '3': ('Verificar conexión a la BD',            verificar_conexion),
-        '4': ('Hacer todo (1 + 2 + 3)',                None),
+        '1': ('Crear archivo .env',                    crear_env),
+        '2': ('Verificar conexión a la BD',            verificar_conexion),
+        '3': ('Hacer todo (1 + 2)',                None),
     }
 
     print("\n¿Qué deseas hacer?")
@@ -97,9 +75,8 @@ if __name__ == '__main__':
 
     eleccion = input("\nOpción: ").strip()
 
-    if eleccion == '4':
+    if eleccion == '3':
         crear_env()
-        generar_hashes_sql()
         verificar_conexion()
     elif eleccion in opciones:
         opciones[eleccion][1]()
