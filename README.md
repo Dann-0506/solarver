@@ -52,7 +52,7 @@ Para revisar y hacer funcionar este proyecto, sigue estos pasos:
     psql -U 'usuario' -f setup_solarver_db.sql
 
 5. **Configurar el entorno:**
-    python setup_dev.py 
+    python setup_solarver_dev.py 
     (NOTA: Se recomienda seleccionar la opción 3 si es la primera vez que se ejecuta).
 
 6. **Iniciar el servidor local**
