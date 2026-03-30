@@ -143,11 +143,6 @@ async function verificarSesion() {
 }
 
 async function cargarListasDashboard() {
-
-    console.log('dashClientesDeuda:', document.getElementById('dashClientesDeuda'));
-    console.log('dashRecordatorios:', document.getElementById('dashRecordatorios'));
-    // resto de la función...
-
     // 1. Cargar "Clientes con deuda próxima"
     try {
         const resC = await fetch(`${API_BASE_URL}/api/clientes`);
