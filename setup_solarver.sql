@@ -7,8 +7,7 @@
 CREATE DATABASE "SolarVer";
 
 -- ── Conectarse a la BD antes de continuar ──
--- En psql:        \c SolarVer
--- En pgAdmin:     abrir Query Tool sobre SolarVer
+\c SolarVer;
 
 -- ═══════════════════════════════════════════════════════════
 --  2. TABLAS (en orden correcto de dependencias)

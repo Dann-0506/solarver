@@ -83,7 +83,7 @@ def login():
         cursor.execute('UPDATE "USUARIO" SET "Intentos_Fallidos"=0, "Fecha_Bloqueo"=NULL WHERE "Username"=%s', (username,))
         conn.commit()
 
-        redirect = 'admin.html' if 'admin' in nombre_rol else 'empleado.html'
+        redirect = '/pages/admin.html' if 'admin' in nombre_rol else '/pages/empleado.html'
         print(f"Login: {username} → {redirect}")
 
         return jsonify({

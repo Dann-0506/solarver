@@ -28,9 +28,9 @@ export async function loadPartial(containerId, partialPath) {
  */
 export async function loadSharedTabs() {
     await Promise.all([
-        loadPartial('tab-dashboard',      '../partials/tab-dashboard.html'),
-        loadPartial('tab-clientes',       '../partials/tab-clientes.html'),
-        loadPartial('tab-pagos',          '../partials/tab-pagos.html'),
-        loadPartial('tab-notificaciones', '../partials/tab-notificaciones.html'),
+        loadPartial('tab-dashboard',      '/partials/tab-dashboard.html'),
+        loadPartial('tab-clientes',       '/partials/tab-clientes.html'),
+        loadPartial('tab-pagos',          '/partials/tab-pagos.html'),
+        loadPartial('tab-notificaciones', '/partials/tab-notificaciones.html'),
     ]);
 }
