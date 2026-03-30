@@ -1,63 +1,32 @@
-# SolarVer - Proyecto Universitario
+# Guía de Contribución para SolarVer
 
-¡Bienvenido al repositorio de **SolarVer**!
+¡Gracias por tu interés en contribuir a **SolarVer**! Para mantener nuestro código limpio, organizado y libre de errores en la rama principal, por favor sigue estas reglas de trabajo.
 
-Este proyecto es desarrollado como parte de la materia **Ingenieria de Software** en el **Instituto Técnológico de Veracruz**.
+## Flujo de Trabajo (Ramas y PRs)
 
-**Nota:** Este es un sistema de simulación creado con fines estrictamente educativos. **No es un producto comercial**.
+Nuestra rama `main` está protegida. **NUNCA** se deben subir cambios directamente a `main`. Todo código nuevo debe pasar por una rama individual y un Pull Request.
 
----
+### 1. Nomenclatura de Ramas
+Antes de empezar a trabajar, crea una rama nueva desde `main`. Usa los siguientes prefijos para indicar qué estás haciendo:
+* `fix/` - Para reparar un error (ej. `fix/dashboard-empleado-carga`).
+* `feat/` - Para una característica nueva (ej. `feat/exportar-pdf-reportes`).
+* `docs/` - Para cambios en documentación (ej. `docs/actualizar-readme`).
 
-## Descripción del Proyecto
+**Comando:** `git checkout -b fix/nombre-del-problema`
 
-SolarVer es un prototipo de plataforma web diseñada para simular la administración de clientes, pagos y recordatorios de un negocio. El objetivo es poner en práctica conocimientos de desarrollo web, base de datos y planeación de proyectos.
+### 2. Guardando cambios (Commits)
+* Sube tu rama al servidor remoto pronto para tener un respaldo.
+* Escribe mensajes de commit claros y descriptivos en tiempo presente (ej. "Agrega botón de cancelar", en lugar de "Agregué un botón").
 
-Se cuenta con dos roles de simulación:
-- **Administrador:** Vista global de ingresos y gestión de usuarios.
-- **Empleado:** Herramienta para registrar cobros y visualizar historial de clientes.
+### 3. Pull Requests (PR)
+Cuando termines tu tarea:
+1. Asegúrate de que tu código funciona localmente.
+2. Abre un Pull Request apuntando hacia `main`.
+3. Añade un título descriptivo y explica brevemente en la descripción qué problema resuelve tu código.
+4. Una vez que el PR sea aprobado y fusionado (merged), **elimina tu rama** para mantener el repositorio limpio.
 
-## Tecnologías Empleadas
-
-- **Frontend:** HTML5, CSS3, JavaScript.
-- **Backend:** Python.
-- **Base de Datos:** PostgreSQL.
-
-## Guía de Instalación Local
-
-Para revisar y hacer funcionar este proyecto, sigue estos pasos:
-
-### Requisitos previos
-- Python 3.12.8 o superior.
-- PostgreSQL.
-- Git.
-
-### Pasos para ejecutar
-
-1. **Clonar el repositorio:**
-    git clone [https://github.com/Dann-0506/solarver](https://github.com/Dann-0506/solarver)
-
-2. **Configurar el entorno virtual:**
-    cd /ruta/del/proyecto
-    python -m venv venv
-
-    #En Windows:
-    venv\scripts\activate
-    #En Linux/Mac:
-    source venv/bin/activate
-
-3. **Instalar dependencias:**
-    pip install -r requirements.text
-
-4. **Crear la base de datos:**
-    psql -U 'usuario' -f setup_solarver_db.sql
-
-5. **Configurar el entorno:**
-    python setup_dev.py 
-    (NOTA: Se recomienda seleccionar la opción 3 si es la primera vez que se ejecuta).
-
-6. **Iniciar el servidor local**
-    cd backend
-    python app.py
-
-7. **Probar la aplicación:**
-    Abre el navegador y visita **http://localhost:5000** (o el puuerto que indique la terminal).
+## Reporte de Errores (Issues)
+Si encuentras un bug pero no tienes tiempo de arreglarlo, por favor abre un "Issue" en GitHub detallando:
+* Qué esperabas que pasara.
+* Qué pasó en realidad.
+* Pasos para reproducir el error.
