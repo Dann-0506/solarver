@@ -2,31 +2,7 @@
    SolarVer – Login Styles
    Archivo: login.css
 ───────────────────────────────────────── */
-
-:root {
-  --orange:   #FF7A1F;
-  --orange-d: #E8601A;
-  --blue:     #1E85C8;
-  --blue-d:   #0E4F8A;
-  --white:    #FFFFFF;
-  --bg:       #F0F4F8;
-  --text:     #0D1B2A;
-  --muted:    #6B7D8F;
-  --card:     #FFFFFF;
-  --border:   #D6E3EF;
-  --success:  #27AE60;
-  --error:    #E74C3C;
-}
-
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
 body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--bg);
   min-height: 100vh;
   display: flex;
   overflow: hidden;

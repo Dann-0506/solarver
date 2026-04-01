@@ -5,7 +5,7 @@
  */
 
 import { API_BASE_URL } from '../core/api.js';
-import { getUsuario } from '../core/auth.js';
+import { esAdmin } from '../core/auth.js';
 import { getIniciales, renderPagBtns, mostrarAlerta, ocultarAlerta } from '../core/utils.js';
 
 const PER_PAGE = 7;
@@ -281,7 +281,7 @@ export async function guardarCliente() {
         const data = await res.json();
         if (data.success) {
             cerrarModalCliente();
-            mostrarAlerta('tablaAlert', `✅ Cliente ${editingId ? 'actualizado' : 'registrado'} correctamente.`, 'success');
+            mostrarAlerta('tablaAlert', `Cliente ${editingId ? 'actualizado' : 'registrado'} correctamente.`, 'success');
             cargarClientes();
             cargarStats();
         } else {
@@ -316,7 +316,7 @@ export async function ejecutarEliminarCliente() {
         const data = await res.json();
         cerrarDeleteClienteModal();
         if (data.success) {
-            mostrarAlerta('tablaAlert', '✅ Cliente eliminado correctamente.', 'success');
+            mostrarAlerta('tablaAlert', 'Cliente eliminado correctamente.', 'success');
             cargarClientes();
             cargarStats();
         } else {
@@ -328,12 +328,6 @@ export async function ejecutarEliminarCliente() {
     } finally {
         if (btn) { btn.textContent = 'Sí, eliminar'; btn.disabled = false; }
     }
-}
-
-// ── Helper rol ─────────────────────────────────────────────
-function esAdmin() {
-    const u = getUsuario();
-    return u && u.rol && u.rol.toLowerCase().includes('admin');
 }
 
 // ── Exponer al scope global para onclick del HTML ──────────
