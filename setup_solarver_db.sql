@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
---  SolarVer – Script de configuración inicial de la BD
+--  SolarVer – Script de configuración inicial de la BD (ACTUALIZADO)
 --  Ejecutar conectado al servidor PostgreSQL (no a una BD)
 -- ═══════════════════════════════════════════════════════════
 
@@ -30,8 +30,6 @@ CREATE TABLE "USUARIO" (
     "Fecha_Bloqueo"     TIMESTAMP,
     "Id_Rol"            INTEGER,
 
-    -- CORRECCIÓN: máximo 3 intentos (el CHECK original decía BETWEEN 0 AND 3,
-    -- pero MAX_INTENTOS = 3 en el backend, así que el valor 3 debe ser válido)
     CONSTRAINT "Chk_Intentos_Fallidos"
         CHECK ("Intentos_Fallidos" BETWEEN 0 AND 3),
 
@@ -49,9 +47,7 @@ CREATE TABLE "CLIENTE" (
     "Correo"          VARCHAR(150),
     "Telefono"        VARCHAR(20),
     "Direccion"       VARCHAR(200),
-    -- CORRECCIÓN: INTEGER en lugar de DATE — el backend maneja días 5 o 17
     "Fecha_Pago"      INTEGER      CHECK ("Fecha_Pago" IN (5, 17)),
-    -- CORRECCIÓN: VARCHAR desde el inicio, el script original hacía un ALTER TABLE después
     "Estado"          VARCHAR(20)  DEFAULT 'Activo'
 );
 
@@ -60,9 +56,9 @@ CREATE TABLE "DEUDA" (
     "Id_Cliente"        INTEGER,
     "Monto_Total"       NUMERIC(10,2) NOT NULL,
     "Saldo_Pendiente"   NUMERIC(10,2) NOT NULL,
-    -- CORRECCIÓN: restricción de valores válidos alineada con el backend
     "Estatus"           VARCHAR(30) CHECK ("Estatus" IN ('pendiente', 'pagado', 'atrasado')),
-    "Fecha_Ultimo_Corte" DATE
+    "Fecha_Ultimo_Corte" DATE,
+    "Plazo_Meses"       INTEGER DEFAULT 12 CHECK ("Plazo_Meses" IN (3, 6, 9, 12, 18, 24, 36, 48, 60, 72))
 );
 
 CREATE TABLE "PAGO" (
@@ -71,7 +67,7 @@ CREATE TABLE "PAGO" (
     "Monto"       NUMERIC(10,2) NOT NULL,
     "Fecha_Pago"  TIMESTAMP    NOT NULL,
     "Metodo_Pago" VARCHAR(50),
-    "Folio"       VARCHAR(100) UNIQUE,  -- CORRECCIÓN: UNIQUE para garantizar folios irrepetibles
+    "Folio"       VARCHAR(100) UNIQUE,
     "Estado"      VARCHAR(30)  CHECK ("Estado" IN ('completado', 'pendiente', 'cancelado'))
 );
 
@@ -94,7 +90,7 @@ CREATE TABLE "RECORDATORIO" (
     "Estado_Envio"    VARCHAR(30)
 );
 
--- Secuencia para folios de pago (evita condición de carrera)
+-- Secuencia para folios de pago
 CREATE SEQUENCE folio_seq START 500000;
 
 -- ═══════════════════════════════════════════════════════════
@@ -105,7 +101,7 @@ ALTER TABLE "DEUDA"
     ADD CONSTRAINT "Fk_Deuda_Cliente"
     FOREIGN KEY ("Id_Cliente")
     REFERENCES "CLIENTE"("Id_Cliente")
-    ON DELETE CASCADE   -- Si se elimina el cliente, se eliminan sus deudas
+    ON DELETE CASCADE
     ON UPDATE CASCADE;
 
 ALTER TABLE "PAGO"
@@ -126,7 +122,7 @@ ALTER TABLE "RECORDATORIO"
     ADD CONSTRAINT "Fk_Recordatorio_Usuario"
     FOREIGN KEY ("Id_Usuario")
     REFERENCES "USUARIO"("Id_Usuario")
-    ON DELETE SET NULL  -- Si se elimina el usuario, el recordatorio se conserva sin referencia
+    ON DELETE SET NULL
     ON UPDATE CASCADE;
 
 ALTER TABLE "HISTORIALCAMBIOS"
@@ -152,20 +148,7 @@ INSERT INTO "ROL" ("Nombre_Rol", "Descripcion") VALUES
     ('Administrador', 'Gestiona usuarios, clientes y configuración del sistema.'),
     ('Empleado',      'Gestiona información de clientes y registra pagos.');
 
--- Usuarios (contraseñas hasheadas con bcrypt, rondas=12)
--- Contraseña real de cada usuario está en el comentario
-INSERT INTO "USUARIO" ("Nombre", "Username", "Correo", "Contrasena", "Estado", "Id_Rol") VALUES
-    -- Contraseña: Admin2024!
-    ('Admin Prueba',    'admin',    'admin@solarver.com',    '$2b$12$9z1JQk4K1JQk4K1JQk4KOeWqVZ1F1F1F1F1F1F1F1F1F1F1F1F1F2', TRUE, 1),
-    -- Contraseña: Empleado2024!
-    ('Empleado Prueba', 'empleado', 'empleado@solarver.com', '$2b$12$9z1JQk4K1JQk4K1JQk4KOeWqVZ1F1F1F1F1F1F1F1F1F1F1F1F1F2', TRUE, 2);
-
--- NOTA: Los hashes anteriores son de ejemplo y NO funcionarán para login.
--- Ejecuta el script Python al final de este archivo para generarlos correctamente,
--- o usa las contraseñas en texto plano de abajo SOLO en desarrollo local:
-
--- Usuarios con contraseñas en texto plano (SOLO para pruebas locales rápidas)
--- El backend acepta texto plano si el campo no empieza con $2b$ o $2a$
+-- Usuarios con contraseñas en texto plano
 INSERT INTO "USUARIO" ("Nombre", "Username", "Correo", "Contrasena", "Estado", "Id_Rol") VALUES
     ('Admin Local',    'adminlocal',    'adminlocal@solarver.com',    'Admin2024',    TRUE, 1),
     ('Empleado Local', 'empleadolocal', 'empleadolocal@solarver.com', 'Empleado2024', TRUE, 2);
@@ -179,16 +162,16 @@ INSERT INTO "CLIENTE" ("Nombre_Completo", "Identificacion", "Correo", "Telefono"
     ('Luis Ramírez Vega',    'RAVL881005HVR005', 'luis.ramirez@email.com',     '2291100005', 'Calle Zaragoza 5, Veracruz',      5,  'Activo'),
     ('Patricia Flores Cruz', 'FOCP010317MVR006', 'patricia.flores@email.com',  '2291100006', 'Av. 20 de Noviembre 34, Veracruz',17, 'Activo');
 
--- Deudas iniciales (una por cliente, estatus variado para poder probar filtros)
-INSERT INTO "DEUDA" ("Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Estatus", "Fecha_Ultimo_Corte") VALUES
-    (1, 15000.00, 12500.00, 'pendiente', CURRENT_DATE),
-    (2,  8500.00,  8500.00, 'atrasado',  CURRENT_DATE - INTERVAL '20 days'),
-    (3, 12000.00,     0.00, 'pagado',    CURRENT_DATE),
-    (4,  9800.00,  4900.00, 'pendiente', CURRENT_DATE),
-    (5, 11000.00, 11000.00, 'atrasado',  CURRENT_DATE - INTERVAL '5 days'),
-    (6,  7500.00,  7500.00, 'pendiente', CURRENT_DATE);
+-- Deudas iniciales
+INSERT INTO "DEUDA" ("Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Estatus", "Fecha_Ultimo_Corte", "Plazo_Meses") VALUES
+    (1, 15000.00, 12500.00, 'pendiente', CURRENT_DATE, 12),
+    (2,  8500.00,  8500.00, 'atrasado',  CURRENT_DATE - INTERVAL '20 days', 6),
+    (3, 12000.00,     0.00, 'pagado',    CURRENT_DATE, 12),
+    (4,  9800.00,  4900.00, 'pendiente', CURRENT_DATE, 24),
+    (5, 11000.00, 11000.00, 'atrasado',  CURRENT_DATE - INTERVAL '5 days', 18),
+    (6,  7500.00,  7500.00, 'pendiente', CURRENT_DATE, 12);
 
--- Pagos de prueba (solo para clientes con saldo menor al total)
+-- Pagos de prueba
 INSERT INTO "PAGO" ("Id_Deuda", "Monto", "Fecha_Pago", "Metodo_Pago", "Folio", "Estado") VALUES
     (1, 2500.00, NOW() - INTERVAL '15 days', 'Transferencia', 'FOL-500000', 'completado'),
     (3, 6000.00, NOW() - INTERVAL '30 days', 'Efectivo',      'FOL-500001', 'completado'),
@@ -205,14 +188,5 @@ SELECT setval('folio_seq', 500004);
 SELECT 'Tablas creadas:' AS info;
 SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;
 
-SELECT 'Roles:' AS info;
-SELECT * FROM "ROL";
-
-SELECT 'Usuarios:' AS info;
-SELECT "Id_Usuario", "Nombre", "Username", "Estado", "Id_Rol" FROM "USUARIO";
-
-SELECT 'Clientes:' AS info;
-SELECT "Id_Cliente", "Nombre_Completo", "Fecha_Pago", "Estado" FROM "CLIENTE";
-
 SELECT 'Deudas:' AS info;
-SELECT "Id_Deuda", "Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Estatus" FROM "DEUDA";
+SELECT "Id_Deuda", "Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Plazo_Meses", "Estatus" FROM "DEUDA";

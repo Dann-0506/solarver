@@ -257,6 +257,7 @@ export async function guardarCliente() {
     const direccion    = document.getElementById('cDireccion')?.value.trim();
     const fecha_pago   = document.getElementById('cFechaPago')?.value;
     const deuda_inicial= document.getElementById('cDeuda')?.value;
+    const plazo_meses  = document.getElementById('cPlazo')?.value;
     const usuario      = getUsuario();
 
     if (!nombre || !fecha_pago) {
@@ -275,7 +276,11 @@ export async function guardarCliente() {
         const url    = editingId ? `${API_BASE_URL}/api/clientes/${editingId}` : `${API_BASE_URL}/api/clientes`;
         const method = editingId ? 'PUT' : 'POST';
         const body   = { nombre, correo, telefono, direccion, fecha_pago: parseInt(fecha_pago), id_usuario: usuario?.id };
-        if (!editingId) { body.identificacion = identificacion; body.deuda_inicial = parseFloat(deuda_inicial) || 0; }
+        if (!editingId) { 
+            body.identificacion = identificacion; 
+            body.deuda_inicial = parseFloat(deuda_inicial) || 0; 
+            body.plazo_meses = parseInt(plazo_meses) || 12;
+        }
 
         const res  = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         const data = await res.json();

@@ -45,6 +45,7 @@ def crear_cliente():
     direccion      = data.get('direccion', '').strip()
     fecha_pago     = data.get('fecha_pago')
     deuda_inicial  = data.get('deuda_inicial', 0)
+    plazo_meses    = data.get('plazo_meses', 12)
     id_usuario     = data.get('id_usuario')
 
     if not all([nombre, identificacion, fecha_pago]):
@@ -67,9 +68,9 @@ def crear_cliente():
         nuevo_id = cursor.fetchone()['Id_Cliente']
         monto = float(deuda_inicial) if deuda_inicial else 0.0
         cursor.execute("""
-            INSERT INTO "DEUDA" ("Id_Cliente","Monto_Total","Saldo_Pendiente","Estatus","Fecha_Ultimo_Corte")
-            VALUES (%s,%s,%s,'pendiente',CURRENT_DATE)
-        """, (nuevo_id, monto, monto))
+            INSERT INTO "DEUDA" ("Id_Cliente","Monto_Total","Saldo_Pendiente","Estatus","Fecha_Ultimo_Corte","Plazo_Meses")
+            VALUES (%s,%s,%s,'pendiente',CURRENT_DATE,%s)
+        """, (nuevo_id, monto, monto, plazo_meses))
         if id_usuario:
             cursor.execute("""
                 INSERT INTO "HISTORIALCAMBIOS" ("Id_Cliente","Id_Usuario","Accion","Descripcion","Fecha")
