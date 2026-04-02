@@ -50,7 +50,7 @@ if __name__ == '__main__':
         id='actualizar_estatus_diario'
     )
     scheduler.start()
-    print("⏰ Scheduler activo — actualización de estatus diaria a las 08:00 AM")
+    print("Scheduler activo — actualización de estatus diaria a las 08:00 AM")
 
     actualizar_estatus_deudas()
 

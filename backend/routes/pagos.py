@@ -6,6 +6,7 @@
 from flask import Blueprint, request, jsonify
 from db import get_connection
 import psycopg2.extras
+from datetime import datetime
 
 pagos_bp = Blueprint('pagos', __name__)
 
@@ -82,12 +83,14 @@ def registrar_pago():
         conn   = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("""
-            SELECT d."Id_Deuda", d."Saldo_Pendiente", c."Nombre_Completo"
+            SELECT d."Id_Deuda", d."Saldo_Pendiente", d."Monto_Total", d."Plazo_Meses",
+                   c."Nombre_Completo", c."Fecha_Pago"
             FROM "DEUDA" d
             JOIN "CLIENTE" c ON c."Id_Cliente" = d."Id_Cliente"
             WHERE d."Id_Cliente" = %s
         """, (id_cliente,))
         deuda = cursor.fetchone()
+        
         if not deuda:
             return jsonify({ 'success': False, 'message': 'No se encontró deuda para este cliente.' }), 404
 
@@ -96,10 +99,8 @@ def registrar_pago():
         if monto > saldo_actual:
             advertencia = f'El monto ingresado (${monto:,.2f}) supera el saldo pendiente (${saldo_actual:,.2f}).'
 
-        # Folio atómico
         cursor.execute("SELECT nextval('folio_seq') AS num")
-        num   = cursor.fetchone()['num']
-        folio = f'FOL-{num}'
+        folio = f"FOL-{cursor.fetchone()['num']}"
 
         cursor.execute("""
             INSERT INTO "PAGO" ("Id_Deuda","Monto","Fecha_Pago","Metodo_Pago","Folio","Estado")
@@ -108,11 +109,37 @@ def registrar_pago():
         """, (deuda['Id_Deuda'], monto, fecha_pago, metodo_pago, folio))
         id_pago = cursor.fetchone()['Id_Pago']
 
-        nuevo_saldo   = max(saldo_actual - monto, 0)
-        nuevo_estatus = 'pagado' if nuevo_saldo <= 0 else 'pendiente'
+        nuevo_saldo = max(saldo_actual - monto, 0)
+
+        hoy = datetime.now()
+        dia_corte = int(deuda['Fecha_Pago'])
+        
+        if dia_corte == 5:
+            if hoy.day >= 5: inicio_periodo = datetime(hoy.year, hoy.month, 5)
+            else: inicio_periodo = datetime(hoy.year if hoy.month > 1 else hoy.year - 1, hoy.month - 1 if hoy.month > 1 else 12, 5)
+        else:
+            if hoy.day >= 17: inicio_periodo = datetime(hoy.year, hoy.month, 17)
+            else: inicio_periodo = datetime(hoy.year if hoy.month > 1 else hoy.year - 1, hoy.month - 1 if hoy.month > 1 else 12, 17)
+
+        cursor.execute("""
+            SELECT COALESCE(SUM("Monto"), 0) AS total_pagado
+            FROM "PAGO"
+            WHERE "Id_Deuda" = %s AND "Fecha_Pago" >= %s AND "Estado" = 'completado'
+        """, (deuda['Id_Deuda'], inicio_periodo))
+        pagado_mes = float(cursor.fetchone()['total_pagado'])
+
+        mensualidad = float(deuda['Monto_Total']) / int(deuda['Plazo_Meses'] or 12)
+
+        if nuevo_saldo <= 0 or pagado_mes >= mensualidad:
+            nuevo_estatus = 'pagado'
+        elif hoy.day > dia_corte:
+            nuevo_estatus = 'atrasado'
+        else:
+            nuevo_estatus = 'pendiente'
+
         cursor.execute("""
             UPDATE "DEUDA"
-            SET "Saldo_Pendiente"=%s,"Estatus"=%s,"Fecha_Ultimo_Corte"=CURRENT_DATE
+            SET "Saldo_Pendiente"=%s, "Estatus"=%s, "Fecha_Ultimo_Corte"=CURRENT_DATE
             WHERE "Id_Deuda"=%s
         """, (nuevo_saldo, nuevo_estatus, deuda['Id_Deuda']))
 
@@ -120,8 +147,7 @@ def registrar_pago():
             cursor.execute("""
                 INSERT INTO "HISTORIALCAMBIOS" ("Id_Cliente","Id_Usuario","Accion","Descripcion","Fecha")
                 VALUES (%s,%s,'REGISTRAR_PAGO',%s,NOW())
-            """, (id_cliente, id_usuario, f'Pago de ${monto:,.2f} registrado. Folio: {folio}. Saldo pendiente: ${nuevo_saldo:,.2f}'))
-
+            """, (id_cliente, id_usuario, f'Pago de ${monto:,.2f} registrado. Folio: {folio}. Saldo: ${nuevo_saldo:,.2f}. Estatus: {nuevo_estatus}'))
         conn.commit()
         return jsonify({
             'success'       : True,

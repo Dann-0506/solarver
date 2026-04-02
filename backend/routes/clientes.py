@@ -20,7 +20,7 @@ def get_clientes():
             SELECT c."Id_Cliente", c."Nombre_Completo", c."Identificacion",
                    c."Correo", c."Telefono", c."Direccion",
                    c."Fecha_Pago", c."Estado",
-                   d."Id_Deuda", d."Monto_Total", d."Saldo_Pendiente", d."Estatus"
+                   d."Id_Deuda", d."Monto_Total", d."Saldo_Pendiente", d."Estatus", d."Plazo_Meses", d."Interes_Acumulado"
             FROM   "CLIENTE" c
             LEFT JOIN "DEUDA" d ON d."Id_Cliente" = c."Id_Cliente"
             ORDER  BY c."Id_Cliente" DESC

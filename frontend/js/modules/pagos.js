@@ -95,6 +95,8 @@ export async function abrirModalPago(modalId = 'pagoModal') {
     if (advEl) advEl.style.display = 'none';
     const btnGuardar = document.getElementById('btnGuardarPago');
     if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.style.opacity = '1'; }
+    const mensDisp = document.getElementById('pagoMensualidadDisp');
+    if (mensDisp) mensDisp.textContent = '—';
 
     _pagoSaldo = 0;
     _pagoFolio = null;
@@ -141,7 +143,7 @@ export function filtrarClientesPago() {
         lista.innerHTML = '<div style="padding:12px 16px;color:var(--muted);font-size:.84rem">Sin resultados.</div>';
     } else {
         lista.innerHTML = datos.map(c => `
-          <div onclick="window._seleccionarClientePago(${c.Id_Cliente},'${c.Nombre_Completo.replace(/'/g, "\\'")}',${c.Saldo_Pendiente})"
+          <div onclick="window._seleccionarClientePago(${c.Id_Cliente},'${c.Nombre_Completo.replace(/'/g, "\\'")}',${c.Saldo_Pendiente}, ${c.Monto_Total}, ${c.Plazo_Meses})"
             style="padding:10px 16px;cursor:pointer;font-size:.85rem;border-bottom:1px solid var(--border)"
             onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='white'">
             <div style="font-weight:600">${c.Nombre_Completo}</div>
@@ -151,7 +153,7 @@ export function filtrarClientesPago() {
     lista.style.display = 'block';
 }
 
-export function seleccionarClientePago(id, nombre, saldo) {
+export function seleccionarClientePago(id, nombre, saldo, montoTotal, plazoMeses) {
     const clienteHidden = document.getElementById('pagoCliente');
     if (clienteHidden) clienteHidden.value = id;
     const clienteInput  = document.getElementById('pagoClienteBuscar');
@@ -160,9 +162,21 @@ export function seleccionarClientePago(id, nombre, saldo) {
     if (listaEl) listaEl.style.display = 'none';
     const selEl = document.getElementById('pagoClienteSeleccionado');
     if (selEl) { selEl.style.display = 'block'; selEl.textContent = `✓ ${nombre}`; }
+    
     _pagoSaldo = parseFloat(saldo);
     const saldoDisp = document.getElementById('pagoSaldoDisp');
-    if (saldoDisp) saldoDisp.textContent = '$' + _pagoSaldo.toLocaleString();
+    if (saldoDisp) saldoDisp.textContent = '$' + _pagoSaldo.toLocaleString('es-MX', { minimumFractionDigits: 2 });
+    
+    const plazo = parseInt(plazoMeses) || 12;
+    const mensualidad = (parseFloat(montoTotal) || 0) / plazo;
+    const mensDisp = document.getElementById('pagoMensualidadDisp');
+    if (mensDisp) mensDisp.textContent = '$' + mensualidad.toLocaleString('es-MX', { minimumFractionDigits: 2 });
+    
+    const inputMonto = document.getElementById('pagoMonto');
+    if (inputMonto) {
+        inputMonto.value = Math.min(mensualidad, _pagoSaldo).toFixed(2);
+    }
+    
     verificarMonto();
 }
 

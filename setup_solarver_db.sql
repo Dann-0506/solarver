@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════
---  SolarVer – Script de configuración inicial de la BD (ACTUALIZADO)
---  Ejecutar conectado al servidor PostgreSQL (no a una BD)
+--  SolarVer – Script de configuración inicial de la BD
+--  Ejecutar conectado al servidor PostgreSQL
 -- ═══════════════════════════════════════════════════════════
 
 -- 1. Crear la base de datos
@@ -52,13 +52,15 @@ CREATE TABLE "CLIENTE" (
 );
 
 CREATE TABLE "DEUDA" (
-    "Id_Deuda"          SERIAL PRIMARY KEY,
-    "Id_Cliente"        INTEGER,
-    "Monto_Total"       NUMERIC(10,2) NOT NULL,
-    "Saldo_Pendiente"   NUMERIC(10,2) NOT NULL,
-    "Estatus"           VARCHAR(30) CHECK ("Estatus" IN ('pendiente', 'pagado', 'atrasado')),
-    "Fecha_Ultimo_Corte" DATE,
-    "Plazo_Meses"       INTEGER DEFAULT 12 CHECK ("Plazo_Meses" IN (3, 6, 9, 12, 18, 24, 36, 48, 60, 72))
+    "Id_Deuda"                  SERIAL PRIMARY KEY,
+    "Id_Cliente"                INTEGER,
+    "Monto_Total"               NUMERIC(10,2) NOT NULL,
+    "Saldo_Pendiente"           NUMERIC(10,2) NOT NULL,
+    "Estatus"                   VARCHAR(30) CHECK ("Estatus" IN ('pendiente', 'pagado', 'atrasado')),
+    "Fecha_Ultimo_Corte"        DATE,
+    "Plazo_Meses"               INTEGER DEFAULT 12 CHECK ("Plazo_Meses" IN (3, 6, 9, 12, 18, 24, 36, 48, 60, 72)),
+    "Interes_Acumulado"         NUMERIC(10,2) DEFAULT 0.00,
+    "Fecha_Ultima_Penalizacion" DATE
 );
 
 CREATE TABLE "PAGO" (
@@ -90,7 +92,7 @@ CREATE TABLE "RECORDATORIO" (
     "Estado_Envio"    VARCHAR(30)
 );
 
--- Secuencia para folios de pago
+-- Secuencia para folios de pago (evita condición de carrera)
 CREATE SEQUENCE folio_seq START 500000;
 
 -- ═══════════════════════════════════════════════════════════
@@ -148,7 +150,7 @@ INSERT INTO "ROL" ("Nombre_Rol", "Descripcion") VALUES
     ('Administrador', 'Gestiona usuarios, clientes y configuración del sistema.'),
     ('Empleado',      'Gestiona información de clientes y registra pagos.');
 
--- Usuarios con contraseñas en texto plano
+-- Usuarios con contraseñas en texto plano (SOLO para pruebas locales rápidas)
 INSERT INTO "USUARIO" ("Nombre", "Username", "Correo", "Contrasena", "Estado", "Id_Rol") VALUES
     ('Admin Local',    'adminlocal',    'adminlocal@solarver.com',    'Admin2024',    TRUE, 1),
     ('Empleado Local', 'empleadolocal', 'empleadolocal@solarver.com', 'Empleado2024', TRUE, 2);
@@ -162,14 +164,14 @@ INSERT INTO "CLIENTE" ("Nombre_Completo", "Identificacion", "Correo", "Telefono"
     ('Luis Ramírez Vega',    'RAVL881005HVR005', 'luis.ramirez@email.com',     '2291100005', 'Calle Zaragoza 5, Veracruz',      5,  'Activo'),
     ('Patricia Flores Cruz', 'FOCP010317MVR006', 'patricia.flores@email.com',  '2291100006', 'Av. 20 de Noviembre 34, Veracruz',17, 'Activo');
 
--- Deudas iniciales
-INSERT INTO "DEUDA" ("Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Estatus", "Fecha_Ultimo_Corte", "Plazo_Meses") VALUES
-    (1, 15000.00, 12500.00, 'pendiente', CURRENT_DATE, 12),
-    (2,  8500.00,  8500.00, 'atrasado',  CURRENT_DATE - INTERVAL '20 days', 6),
-    (3, 12000.00,     0.00, 'pagado',    CURRENT_DATE, 12),
-    (4,  9800.00,  4900.00, 'pendiente', CURRENT_DATE, 24),
-    (5, 11000.00, 11000.00, 'atrasado',  CURRENT_DATE - INTERVAL '5 days', 18),
-    (6,  7500.00,  7500.00, 'pendiente', CURRENT_DATE, 12);
+-- Deudas iniciales (Añadido Plazo_Meses e Interes_Acumulado)
+INSERT INTO "DEUDA" ("Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Estatus", "Fecha_Ultimo_Corte", "Plazo_Meses", "Interes_Acumulado", "Fecha_Ultima_Penalizacion") VALUES
+    (1, 15000.00, 12500.00, 'pendiente', CURRENT_DATE, 12, 0.00, NULL),
+    (2,  8500.00,  8500.00, 'atrasado',  CURRENT_DATE - INTERVAL '20 days', 6, 0.00, NULL),
+    (3, 12000.00,     0.00, 'pagado',    CURRENT_DATE, 12, 0.00, NULL),
+    (4,  9800.00,  4900.00, 'pendiente', CURRENT_DATE, 24, 0.00, NULL),
+    (5, 11000.00, 11000.00, 'atrasado',  CURRENT_DATE - INTERVAL '5 days', 18, 0.00, NULL),
+    (6,  7500.00,  7500.00, 'pendiente', CURRENT_DATE, 12, 0.00, NULL);
 
 -- Pagos de prueba
 INSERT INTO "PAGO" ("Id_Deuda", "Monto", "Fecha_Pago", "Metodo_Pago", "Folio", "Estado") VALUES
@@ -189,4 +191,4 @@ SELECT 'Tablas creadas:' AS info;
 SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;
 
 SELECT 'Deudas:' AS info;
-SELECT "Id_Deuda", "Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Plazo_Meses", "Estatus" FROM "DEUDA";
+SELECT "Id_Deuda", "Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Plazo_Meses", "Interes_Acumulado", "Estatus" FROM "DEUDA";
