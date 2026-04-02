@@ -20,7 +20,7 @@ import { cargarPagos, abrirModalPago, cerrarModalPago, cerrarComprobante,
          filtrarClientesPago, verificarMonto, guardarPago } from '../modules/pagos.js';
 import { cargarClientesRec, seleccionarTodosRec,
          enviarRecordatorios, cargarHistorialRec } from '../modules/recordatorios.js';
-import { mostrarSubreporte, generarReporte } from '../modules/reportes.js';
+import { mostrarSubreporte, descargarReporte, actualizarVistaReporte } from '../modules/reportes.js';
 import { cargarHistorial } from '../modules/historial.js';
 
 const TABS = ['dashboard','clientes','pagos','notificaciones','usuarios','historial','reportes','respaldos'];
@@ -84,7 +84,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.enviarRecordatorios        = enviarRecordatorios;
     window.cargarHistorialRec         = cargarHistorialRec;
     window.mostrarSubreporte          = mostrarSubreporte;
-    window.generarReporte             = generarReporte;
+    window.descargarReporte           = descargarReporte;
+    window.actualizarVistaReporte     = actualizarVistaReporte;
     window.cargarHistorial            = cargarHistorial;
     window.cerrarSesion               = cerrarSesion;
 });
@@ -103,7 +104,7 @@ function showTab(name) {
     if (name === 'notificaciones') { cargarClientesRec(); cargarHistorialRec(); }
     if (name === 'usuarios')       cargarUsuarios();
     if (name === 'historial')      cargarHistorial();
-    if (name === 'reportes')       mostrarSubreporte('faltan');
+    if (name === 'reportes')       {mostrarSubreporte('faltan'); actualizarVistaReporte();}
 }
 
 async function verificarSesion() {

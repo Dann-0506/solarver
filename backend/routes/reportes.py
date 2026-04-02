@@ -1,6 +1,14 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request, send_file
 from db import get_connection
 import psycopg2.extras
+import pandas as pd
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+import io
+from datetime import datetime
 
 reportes_bp = Blueprint('reportes', __name__)
 
@@ -8,37 +16,152 @@ reportes_bp = Blueprint('reportes', __name__)
 def get_estado_mensual():
     conn = cursor = None
     try:
-        conn   = get_connection()
+        conn = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        # Traer clientes con saldo pendiente
         cursor.execute("""
-            SELECT c."Id_Cliente", c."Nombre_Completo", c."Identificacion",
-                   c."Fecha_Pago", d."Monto_Total", d."Saldo_Pendiente", 
-                   d."Estatus", d."Plazo_Meses"
+            SELECT c."Nombre_Completo", c."Identificacion", c."Fecha_Pago", 
+                   c."Telefono", c."Correo",
+                   d."Monto_Total", d."Saldo_Pendiente", d."Estatus", d."Plazo_Meses", d."Interes_Acumulado"
             FROM "CLIENTE" c
             JOIN "DEUDA" d ON d."Id_Cliente" = c."Id_Cliente"
             WHERE d."Saldo_Pendiente" > 0
         """)
         clientes = cursor.fetchall()
-
-        pagaron = []
-        faltan = []
-
-        for c in clientes:
-            # El scheduler asigna 'pagado' si ya se registró pago en su periodo
-            if c['Estatus'] == 'pagado':
-                pagaron.append(dict(c))
-            else:
-                faltan.append(dict(c))
-
         return jsonify({
             'success': True,
-            'pagaron': pagaron,
-            'faltan': faltan
+            'pagaron': [c for c in clientes if c['Estatus'] == 'pagado'],
+            'faltan': [c for c in clientes if c['Estatus'] != 'pagado']
         }), 200
     except Exception as e:
-        return jsonify({ 'success': False, 'message': str(e) }), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         if cursor: cursor.close()
-        if conn:   conn.close()
+        if conn: conn.close()
+
+# NUEVO ENDPOINT: Para la vista previa web de pagos (último mes)
+@reportes_bp.route('/reportes/ingresos-mensuales', methods=['GET'])
+def get_ingresos_mensuales():
+    conn = cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            SELECT p."Folio", c."Nombre_Completo", c."Telefono", c."Correo",
+                   p."Monto", p."Metodo_Pago", p."Fecha_Pago"
+            FROM "PAGO" p
+            JOIN "DEUDA" d ON p."Id_Deuda" = d."Id_Deuda"
+            JOIN "CLIENTE" c ON d."Id_Cliente" = c."Id_Cliente"
+            WHERE p."Estado" = 'completado' 
+              AND p."Fecha_Pago" >= CURRENT_DATE - INTERVAL '1 month'
+            ORDER BY p."Fecha_Pago" DESC
+        """)
+        pagos = cursor.fetchall()
+        for p in pagos:
+            if p.get('Fecha_Pago'):
+                p['Fecha_Pago'] = p['Fecha_Pago'].strftime('%d/%m/%Y %H:%M')
+        return jsonify({'success': True, 'pagos': pagos}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+
+@reportes_bp.route('/reportes/exportar', methods=['GET'])
+def exportar_reporte():
+    tipo = request.args.get('tipo', 'integral')
+    formato = request.args.get('formato', 'pdf')
+    
+    conn = cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        if tipo == 'realizados':
+            # Exportación de pagos restringida al ÚLTIMO MES
+            cursor.execute("""
+                SELECT p."Folio", c."Nombre_Completo" AS "Cliente", 
+                       c."Telefono", c."Correo",
+                       p."Monto", p."Metodo_Pago", p."Fecha_Pago"
+                FROM "PAGO" p
+                JOIN "DEUDA" d ON p."Id_Deuda" = d."Id_Deuda"
+                JOIN "CLIENTE" c ON d."Id_Cliente" = c."Id_Cliente"
+                WHERE p."Estado" = 'completado'
+                  AND p."Fecha_Pago" >= CURRENT_DATE - INTERVAL '1 month'
+                ORDER BY p."Fecha_Pago" DESC
+            """)
+            datos = cursor.fetchall()
+            for d in datos:
+                if d.get('Fecha_Pago'):
+                    d['Fecha_Pago'] = d['Fecha_Pago'].strftime('%d/%m/%Y %H:%M')
+        else:
+            query = """
+                SELECT c."Nombre_Completo" as "Cliente", c."Identificacion" as "ID", 
+                       c."Telefono", c."Correo",
+                       c."Fecha_Pago" as "Dia_Pago", d."Saldo_Pendiente", 
+                       d."Interes_Acumulado", d."Estatus"
+                FROM "CLIENTE" c
+                JOIN "DEUDA" d ON d."Id_Cliente" = c."Id_Cliente"
+                WHERE d."Saldo_Pendiente" > 0
+            """
+            if tipo == 'pendiente': query += " AND d.\"Estatus\" = 'pendiente'"
+            elif tipo == 'atrasado': query += " AND d.\"Estatus\" = 'atrasado'"
+            
+            cursor.execute(query)
+            datos = cursor.fetchall()
+
+        if formato == 'excel':
+            df = pd.DataFrame(datos)
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Reporte')
+            output.seek(0)
+            return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                             as_attachment=True, download_name=f"Reporte_{tipo}.xlsx")
+
+        else:  # PDF
+            output = io.BytesIO()
+            doc = SimpleDocTemplate(output, pagesize=landscape(letter))
+            elements = []
+            styles = getSampleStyleSheet()
+            
+            titulo = "SolarVer - Reporte de Pagos Realizados" if tipo == 'realizados' else f"SolarVer - Reporte de Cobranza ({tipo.upper()})"
+            elements.append(Paragraph(titulo, styles['Title']))
+            
+            # Subtítulo dinámico indicando el periodo
+            if tipo == 'realizados':
+                elements.append(Paragraph(f"Periodo: Últimos 30 días (Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')})", styles['Normal']))
+            else:
+                elements.append(Paragraph(f"Periodo: Estado al corte actual (Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')})", styles['Normal']))
+            
+            # Resto de la generación del PDF...
+            if tipo == 'realizados':
+                tabla_data = [["Folio", "Cliente", "Contacto (Tel / Correo)", "Monto", "Método", "Fecha"]]
+                for d in datos:
+                    contacto = f"{d['Telefono'] or '-'} / {d['Correo'] or '-'}"
+                    tabla_data.append([d['Folio'], str(d['Cliente'])[:25], contacto[:35], f"${d['Monto']:,.2f}", d['Metodo_Pago'], str(d['Fecha_Pago'])])
+            else:
+                tabla_data = [["Cliente", "Contacto (Tel / Correo)", "Día Pago", "Saldo", "Interés", "Estatus"]]
+                for d in datos:
+                    contacto = f"{d['Telefono'] or '-'} / {d['Correo'] or '-'}"
+                    tabla_data.append([str(d['Cliente'])[:25], contacto[:35], str(d['Dia_Pago']), f"${d['Saldo_Pendiente']:,.2f}", f"${d['Interes_Acumulado']:,.2f}", str(d['Estatus']).capitalize()])
+            
+            t = Table(tabla_data)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ]))
+            elements.append(t)
+            doc.build(elements)
+            
+            output.seek(0)
+            return send_file(output, mimetype='application/pdf', as_attachment=True, download_name=f"Reporte_{tipo}.pdf")
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
