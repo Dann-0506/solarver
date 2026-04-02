@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 5. Datos iniciales
     cargarRoles();
-    cargarStatsAdmin();
+    cargarListasDashboard();
     cargarStatsDashboard();
     setInterval(verificarSesion, 10000);
 
@@ -97,11 +97,27 @@ function showTab(name) {
     document.querySelectorAll('.nav-item[data-tab]').forEach(item =>
         item.classList.toggle('active', item.getAttribute('data-tab') === name)
     );
-    if (name === 'dashboard')       {cargarStatsAdmin(); cargarStatsDashboard();}
+    if (name === 'dashboard')       {cargarListasDashboard(); cargarStatsDashboard();}
     if (name === 'clientes')       { cargarClientes(); cargarStats();}
     if (name === 'pagos')          cargarPagos('pagosTableBody', 'pagosInfo', 'pagosBtns');
     if (name === 'notificaciones') { cargarClientesRec(); cargarHistorialRec(); }
     if (name === 'usuarios')       cargarUsuarios();
     if (name === 'historial')      cargarHistorial();
-    if (name === 'reportes')       mostrarSubreporte('pendientes');
+    if (name === 'reportes')       mostrarSubreporte('faltan');
+}
+
+async function verificarSesion() {
+    const usuario = getUsuario();
+    if (!usuario) return;
+    try {
+        const res  = await fetch(`${API_BASE_URL}/api/session/check`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: usuario.username })
+        });
+        const data = await res.json();
+        if (!data.valid) { 
+            sessionStorage.removeItem('usuario'); 
+            window.location.href = '../pages/login.html'; 
+        }
+    } catch(e) {}
 }

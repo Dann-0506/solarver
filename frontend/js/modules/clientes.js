@@ -60,14 +60,17 @@ function renderPage() {
 
     tbody.innerHTML = data.map(c => {
         const ini    = getIniciales(c.Nombre_Completo);
-        const deuda  = parseFloat(c.Saldo_Pendiente) || 0;
         const status = (c.Estatus || 'pendiente').toLowerCase();
         const st     = statusMap[status] || 'pendiente';
+        const interes = parseFloat(c.Interes_Acumulado) || 0;
+        const alertIcon = interes > 0 
+            ? `<span title="Tiene $${interes.toLocaleString('es-MX', { minimumFractionDigits: 2 })} en recargos" style="color:var(--error); margin-left:6px; font-size:.85rem; cursor:help;">⚠️</span>` 
+            : '';
         return `<tr>
           <td><div class="client-cell">
             <div class="client-avatar">${ini}</div>
             <div>
-              <div class="client-name">${c.Nombre_Completo}</div>
+              <div class="client-name">${c.Nombre_Completo}${alertIcon}</div>
               <div class="client-id">${c.Identificacion}</div>
             </div>
           </div></td>
@@ -166,25 +169,49 @@ export async function abrirPerfilCliente(id) {
     const deuda = parseFloat(c.Saldo_Pendiente) || 0;
     const st    = (c.Estatus || 'pendiente').toLowerCase();
     const set   = (sel, val) => { const el = document.querySelector(sel); if (el) el.textContent = val; };
+    const plazo = parseInt(c.Plazo_Meses) || 12;
+    const mensualidad = (parseFloat(c.Monto_Total) || 0) / plazo;
+    const intereses = parseFloat(c.Interes_Acumulado) || 0;
     set('#profileModal .p-nombre',      c.Nombre_Completo);
     set('#profileModal .p-id',          c.Identificacion);
     set('#profileModal .p-correo',      c.Correo || '—');
     set('#profileModal .p-telefono',    c.Telefono || '—');
     set('#profileModal .p-direccion',   c.Direccion || '—');
     set('#profileModal .p-fecha-pago',  `Día ${c.Fecha_Pago}`);
+    set('#profileModal .p-plazo', `${plazo} meses`);
+    set('#profileModal .p-mensualidad', '$' + mensualidad.toLocaleString('es-MX', { minimumFractionDigits: 2 }));
+    set('#profileModal .p-interes', intereses > 0 ? '$' + intereses.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '$0.00');
+
+    const gridEl = document.querySelector('#profileModal .form-grid') || document.querySelector('#profileModal > div:nth-child(4)'); 
+    if(gridEl) {
+        const oldMsg = gridEl.querySelector('.interes-msg');
+        if(oldMsg) oldMsg.remove();
+        
+        if(intereses > 0) {
+            gridEl.insertAdjacentHTML('beforeend', `<div class="interes-msg" style="grid-column: 1 / -1; margin-top: 8px; padding: 10px 14px; background: #FDECEA; color: var(--error); border-radius: 8px; font-weight: 600; border-left: 3px solid var(--error);">Incluye recargos por mora: $${intereses.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</div>`);
+        }
+    }
+
     const initEl = document.getElementById('pInitials');
     if (initEl) initEl.textContent = ini;
+    
     const debtEl = document.getElementById('pDebt');
     if (debtEl) {
         debtEl.textContent = deuda > 0 ? '$' + deuda.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : 'Saldado';
         debtEl.style.color = deuda > 0 ? 'var(--error)' : 'var(--success)';
+        if (intereses > 0) {
+            debtEl.title = "Incluye recargos por intereses moratorios";
+        } else {
+            debtEl.title = "";
+        }    
     }
+    
     const stEl = document.getElementById('pStatus');
     if (stEl) {
         stEl.textContent = st.charAt(0).toUpperCase() + st.slice(1);
         stEl.className   = `badge-status status-${st}`;
     }
-    // Cargar últimos 5 pagos
+    
     const tbodyP = document.querySelector('#profileModal .pagos-tbody');
     if (tbodyP) {
         tbodyP.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--muted)">Cargando...</td></tr>';
@@ -257,6 +284,7 @@ export async function guardarCliente() {
     const direccion    = document.getElementById('cDireccion')?.value.trim();
     const fecha_pago   = document.getElementById('cFechaPago')?.value;
     const deuda_inicial= document.getElementById('cDeuda')?.value;
+    const plazo_meses  = document.getElementById('cPlazo')?.value;
     const usuario      = getUsuario();
 
     if (!nombre || !fecha_pago) {
@@ -275,7 +303,11 @@ export async function guardarCliente() {
         const url    = editingId ? `${API_BASE_URL}/api/clientes/${editingId}` : `${API_BASE_URL}/api/clientes`;
         const method = editingId ? 'PUT' : 'POST';
         const body   = { nombre, correo, telefono, direccion, fecha_pago: parseInt(fecha_pago), id_usuario: usuario?.id };
-        if (!editingId) { body.identificacion = identificacion; body.deuda_inicial = parseFloat(deuda_inicial) || 0; }
+        if (!editingId) { 
+            body.identificacion = identificacion; 
+            body.deuda_inicial = parseFloat(deuda_inicial) || 0; 
+            body.plazo_meses = parseInt(plazo_meses) || 12;
+        }
 
         const res  = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         const data = await res.json();
