@@ -6,6 +6,7 @@
 from flask import Blueprint, request, jsonify
 from db import get_connection
 import psycopg2.extras
+from utils.validators import validar_correo_smtp, validar_telefono_wa
 
 clientes_bp = Blueprint('clientes', __name__)
 
@@ -47,11 +48,24 @@ def crear_cliente():
     deuda_inicial  = data.get('deuda_inicial', 0)
     plazo_meses    = data.get('plazo_meses', 12)
     id_usuario     = data.get('id_usuario')
-
+    
     if not all([nombre, identificacion, fecha_pago]):
         return jsonify({ 'success': False, 'message': 'Nombre, identificación y fecha de pago son obligatorios.' }), 400
+    
     if int(fecha_pago) not in (5, 17):
         return jsonify({ 'success': False, 'message': 'La fecha de pago debe ser 5 o 17.' }), 400
+    
+    if correo:
+        valido, msj = validar_correo_smtp(correo)
+        if not valido:
+            return jsonify({ 'success': False, 'message': f'Error en correo: {msj}' }), 400
+        correo = msj
+
+    if telefono:
+        valido, msj = validar_telefono_wa(telefono)
+        if not valido:
+            return jsonify({ 'success': False, 'message': f'Error en teléfono: {msj}' }), 400
+        telefono = msj
 
     conn = cursor = None
     try:
@@ -101,6 +115,18 @@ def editar_cliente(id_cliente):
     if not all([nombre, fecha_pago]):
         return jsonify({ 'success': False, 'message': 'Nombre y fecha de pago son obligatorios.' }), 400
 
+    if correo:
+        valido, msj = validar_correo_smtp(correo)
+        if not valido:
+            return jsonify({ 'success': False, 'message': f'Error en correo: {msj}' }), 400
+        correo = msj
+
+    if telefono:
+        valido, msj = validar_telefono_wa(telefono)
+        if not valido:
+            return jsonify({ 'success': False, 'message': f'Error en teléfono: {msj}' }), 400
+        telefono = msj
+        
     conn = cursor = None
     try:
         conn   = get_connection()
