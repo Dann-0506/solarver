@@ -48,7 +48,7 @@ def enviar_estado_cuenta_brevo(cliente):
         
     url = os.getenv("https://api.brevo.com/v3/smtp/email")
     api_key = os.getenv("BREVO_API_KEY")
-    template_id = 1
+    template_id = int(os.getenv("BREVO_ESTADO_CUENTA_TEMPLATE_ID", 1)) # ID de plantilla para el Estado de Cuenta
     
     # 1. Generamos el PDF adjunto
     pdf_b64 = generar_pdf_base64(cliente)

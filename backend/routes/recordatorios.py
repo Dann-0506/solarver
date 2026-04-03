@@ -7,8 +7,7 @@ from flask import Blueprint, request, jsonify
 from db import get_connection
 import psycopg2.extras
 import os
-import urllib.request
-import json as json_lib
+import requests
 
 recordatorios_bp = Blueprint('recordatorios', __name__)
 
@@ -22,7 +21,8 @@ def get_clientes_recordatorio():
         cursor.execute("""
             SELECT c."Id_Cliente", c."Nombre_Completo", c."Correo",
                    c."Telefono", c."Fecha_Pago",
-                   d."Saldo_Pendiente", d."Estatus"
+                   d."Saldo_Pendiente", d."Estatus",
+                   (d."Monto_Total" / d."Plazo_Meses") AS "Mensualidad"
             FROM   "CLIENTE" c
             JOIN   "DEUDA"   d ON d."Id_Cliente" = c."Id_Cliente"
             WHERE  d."Saldo_Pendiente" > 0
@@ -44,15 +44,19 @@ def enviar_recordatorios():
     data         = request.get_json()
     ids_clientes = data.get('ids_clientes', [])
     id_usuario   = data.get('id_usuario')
+    # Importante: Si el frontend manda 'whatsapp', lo tratamos como 'sms' para usar la API transaccional
+    canal        = data.get('canal', 'email').lower()
 
-    if not ids_clientes:
-        return jsonify({ 'success': False, 'message': 'Selecciona al menos un cliente.' }), 400
+    # 1. Carga de variables con valores de respaldo (fallback)
+    api_key        = os.getenv('BREVO_API_KEY')
+    sender_name    = os.getenv('SMS_SENDER_NAME', 'SolarVer')
+    sender_email   = os.getenv('CORREO_REMITENTE', 'proyecto.software.s0l4rver@gmail.com') # <--- ASEGÚRATE QUE ESTE SEA TU CORREO VERIFICADO EN BREVO
+    email_template = int(os.getenv('BREVO_EMAIL_REC_TEMPLATE_ID', 3))
 
-    resend_api_key = os.getenv('RESEND_API_KEY', '')
-    resend_from    = os.getenv('RESEND_FROM', '')
-
-    if not resend_api_key:
-        return jsonify({ 'success': False, 'message': 'Configura RESEND_API_KEY en el archivo .env' }), 500
+    print(f"\n--- INICIO PROCESO DE ENVÍO ({canal.upper()}) ---")
+    
+    if not api_key:
+        return jsonify({ 'success': False, 'message': 'API Key no configurada.' }), 500
 
     conn = cursor = None
     enviados = 0
@@ -61,81 +65,87 @@ def enviar_recordatorios():
     try:
         conn   = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
         format_ids = ','.join(['%s'] * len(ids_clientes))
         cursor.execute(f"""
-            SELECT c."Id_Cliente", c."Nombre_Completo", c."Correo",
-                   c."Fecha_Pago", d."Saldo_Pendiente", d."Estatus"
+            SELECT c."Id_Cliente", c."Nombre_Completo", c."Correo", c."Telefono",
+                   c."Fecha_Pago", d."Saldo_Pendiente",
+                   (d."Monto_Total" / d."Plazo_Meses") AS "Mensualidad"
             FROM   "CLIENTE" c
             JOIN   "DEUDA"   d ON d."Id_Cliente" = c."Id_Cliente"
             WHERE  c."Id_Cliente" IN ({format_ids})
         """, ids_clientes)
         clientes = cursor.fetchall()
 
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "api-key": api_key
+        }
+
         for c in clientes:
-            if not c['Correo']:
-                errores.append(f"{c['Nombre_Completo']} (sin correo registrado)")
-                continue
+            print(f"Procesando: {c['Nombre_Completo']}")
+            exito_api = False
+            resumen_log = ""
+
             try:
-                saldo    = float(c['Saldo_Pendiente'])
-                dia_pago = c['Fecha_Pago']
-                cuerpo_html = f"""
-                <html><body style="font-family:Arial,sans-serif;color:#333;max-width:500px;margin:0 auto">
-                  <div style="background:#1E85C8;padding:20px;border-radius:8px 8px 0 0;text-align:center">
-                    <h2 style="color:white;margin:0">SolarVer</h2>
-                    <p style="color:rgba(255,255,255,0.8);margin:4px 0 0">Paneles Solares Veracruz</p>
-                  </div>
-                  <div style="background:#f9f9f9;padding:24px;border-radius:0 0 8px 8px;border:1px solid #eee">
-                    <p>Hola <strong>{c['Nombre_Completo']}</strong>,</p>
-                    <p>Te recordamos que tienes un saldo pendiente de pago:</p>
-                    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:1px solid #eee">
-                      <div style="font-size:2rem;font-weight:700;color:#E74C3C">${saldo:,.2f}</div>
-                      <div style="color:#666;font-size:.9rem">Fecha limite: Dia {dia_pago} de cada mes</div>
-                    </div>
-                    <p>Para cualquier aclaracion, contactanos.</p>
-                    <p style="color:#999;font-size:.8rem;margin-top:24px">— Equipo SolarVer Veracruz</p>
-                  </div>
-                </body></html>"""
+                # ── CANAL SMS / WHATSAPP (API TRANSACCIONAL) ──
+                if canal == 'sms' or canal == 'whatsapp':
+                    if not c['Telefono']:
+                        errores.append(f"{c['Nombre_Completo']} (Sin Teléfono)")
+                        continue
 
-                payload = json_lib.dumps({
-                    "from"   : resend_from,
-                    "to"     : [c['Correo']],
-                    "subject": "Recordatorio de pago — SolarVer Veracruz",
-                    "html"   : cuerpo_html
-                }).encode('utf-8')
+                    url = "https://api.brevo.com/v3/transactionalSMS/sms"
+                    payload = {
+                        "sender": sender_name, # Brevo exige que esto no esté vacío
+                        "recipient": str(c['Telefono']),
+                        "content": f"SolarVer: Hola {c['Nombre_Completo']}, tu pago de ${float(c['Saldo_Pendiente']):,.2f} vence el dia {c['Fecha_Pago']}.",
+                        "type": "transactional"
+                    }
+                    resp = requests.post(url, json=payload, headers=headers, timeout=10)
+                    print(f"DEBUG Brevo SMS: {resp.status_code} - {resp.text}")
+                    
+                    if resp.status_code in (201, 202):
+                        exito_api = True
+                        resumen_log = f"SMS enviado al {c['Telefono']}"
 
-                req = urllib.request.Request(
-                    'https://api.resend.com/emails',
-                    data=payload,
-                    headers={ 'Authorization': f'Bearer {resend_api_key}', 'Content-Type': 'application/json' },
-                    method='POST'
-                )
-                with urllib.request.urlopen(req) as resp:
-                    resp_data = json_lib.loads(resp.read().decode())
+                # ── CANAL EMAIL ──
+                else:
+                    if not c['Correo']:
+                        # ...
+                        continue
 
-                cursor.execute("""
-                    INSERT INTO "RECORDATORIO"
-                        ("Id_Cliente","Id_Usuario","Fecha_Envio","Canal","Mensaje","Estado_Envio")
-                    VALUES (%s,%s,NOW(),'Correo',%s,'enviado')
-                """, (c['Id_Cliente'], id_usuario, f"Recordatorio enviado a {c['Correo']}. Saldo: ${saldo:,.2f}. Dia de pago: {dia_pago}."))
+                    url = "https://api.brevo.com/v3/smtp/email"
+                    payload = {
+                        "sender": {"name": sender_name, "email": sender_email},
+                        "to": [{"email": c['Correo'], "name": c['Nombre_Completo']}],
+                        "templateId": email_template,
+                        "params": {
+                            "nombre": c['Nombre_Completo'],
+                            "pago_minimo": f"${float(c['Mensualidad']):,.2f}", # ENVIAMOS LA MENSUALIDAD CALCULADA
+                            "dia_pago": str(c['Fecha_Pago'])
+                        }
+                    }
+                    resp = requests.post(url, json=payload, headers=headers, timeout=10)
+                    print(f"DEBUG Brevo Email: {resp.status_code} - {resp.text}")
+                    
+                    if resp.status_code in (201, 202):
+                        exito_api = True
+                        resumen_log = f"Correo enviado a {c['Correo']}"
 
-                cursor.execute("""
-                    INSERT INTO "HISTORIALCAMBIOS"
-                        ("Id_Cliente","Id_Usuario","Accion","Descripcion","Fecha")
-                    VALUES (%s,%s,'RECORDATORIO_CORREO',%s,NOW())
-                """, (c['Id_Cliente'], id_usuario, f"Recordatorio por correo enviado a {c['Correo']}. Saldo pendiente: ${saldo:,.2f}"))
+                if exito_api:
+                    cursor.execute("""
+                        INSERT INTO "RECORDATORIO" ("Id_Cliente","Id_Usuario","Fecha_Envio","Canal","Mensaje","Estado_Envio")
+                        VALUES (%s, %s, NOW(), %s, %s, 'enviado')
+                    """, (c['Id_Cliente'], id_usuario, canal.upper(), resumen_log))
+                    
+                    enviados += 1
 
-                enviados += 1
-
-            except urllib.error.HTTPError as ex:
-                errores.append(f"{c['Nombre_Completo']}: {ex.read().decode()}")
-            except Exception as ex:
-                errores.append(f"{c['Nombre_Completo']}: {str(ex)}")
+            except Exception as e:
+                print(f"Error en bucle: {str(e)}")
 
         conn.commit()
-        msg_resp = f"{enviados} correo(s) enviado(s) correctamente."
-        if errores:
-            msg_resp += f" Errores: {', '.join(errores)}"
-        return jsonify({ 'success': True, 'message': msg_resp, 'enviados': enviados, 'errores': errores }), 200
+        return jsonify({ 'success': True, 'message': f'Se enviaron {enviados} notificaciones.', 'enviados': enviados }), 200
 
     except Exception as e:
         if conn: conn.rollback()

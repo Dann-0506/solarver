@@ -23,11 +23,17 @@
     </div>
     <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
       <span id="recSeleccionados" style="font-size:.82rem;color:var(--muted)">0 seleccionado(s)</span>
-      <button id="btnEnviarRec" onclick="enviarRecordatorios()"
-        style="padding:9px 20px;border-radius:10px;border:none;background:var(--orange);color:white;font-size:.84rem;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;display:flex;align-items:center;gap:6px">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Enviar correos
-      </button>
+      <div style="display:flex; gap:12px; align-items:center">
+        <select id="recCanal" style="padding:8px 12px; border-radius:8px; border:1.5px solid var(--border); font-family:'Sora',sans-serif; font-size:.8rem; outline:none; cursor:pointer">
+          <option value="email">Por Correo</option>
+          <option value="whatsapp">Por SMS</option>
+        </select>
+        <button id="btnEnviarRec" onclick="enviarRecordatorios()"
+          style="padding:9px 20px;border-radius:10px;border:none;background:var(--orange);color:white;font-size:.84rem;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;display:flex;align-items:center;gap:6px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Enviar Notificación
+        </button>
+      </div>
     </div>
   </div>
 
