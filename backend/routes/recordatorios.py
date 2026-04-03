@@ -1,7 +1,5 @@
-# ─────────────────────────────────────────
-#  SolarVer – Rutas de Recordatorios e Historial
-#  Archivo: backend/routes/recordatorios.py
-# ─────────────────────────────────────────
+# Archivo: backend/routes/recordatorios.py
+# Rutas para gestión de recordatorios y notificaciones a clientes.
 
 from flask import Blueprint, request, jsonify
 from db import get_connection

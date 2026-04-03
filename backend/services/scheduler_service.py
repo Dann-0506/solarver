@@ -1,7 +1,5 @@
-# ─────────────────────────────────────────
-#  SolarVer – Servicio de actualización automática de estatus
-#  Archivo: backend/services/scheduler.py
-# ─────────────────────────────────────────
+#  Archivo: backend/services/scheduler_service.py
+#  Servicio específico para tareas programadas (scheduler) como actualización de estatus e intereses.
 
 from db import get_connection
 from datetime import datetime

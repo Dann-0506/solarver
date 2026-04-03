@@ -1,7 +1,5 @@
-# ─────────────────────────────────────────
-#  SolarVer – Rutas de Autenticación
-#  Archivo: backend/routes/auth.py
-# ─────────────────────────────────────────
+# Archivo: backend/routes/auth.py
+# Rutas para autenticación de usuarios, manejo de sesiones y seguridad.
 
 from flask import Blueprint, request, jsonify
 from db import get_connection

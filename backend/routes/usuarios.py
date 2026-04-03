@@ -1,7 +1,5 @@
-# ─────────────────────────────────────────
-#  SolarVer – Rutas de Usuarios
-#  Archivo: backend/routes/usuarios.py
-# ─────────────────────────────────────────
+# Archivo: backend/routes/usuarios.py
+# Rutas para gestión de usuarios y roles.
 
 from flask import Blueprint, request, jsonify
 from db import get_connection

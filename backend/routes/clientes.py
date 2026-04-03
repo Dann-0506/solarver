@@ -1,7 +1,5 @@
-# ─────────────────────────────────────────
-#  SolarVer – Rutas de Clientes
-#  Archivo: backend/routes/clientes.py
-# ─────────────────────────────────────────
+# Archivo: backend/routes/clientes.py
+# Rutas para gestión de clientes: creación, edición, eliminación y consulta de pagos asociados.
 
 from flask import Blueprint, request, jsonify
 from db import get_connection
