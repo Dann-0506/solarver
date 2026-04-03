@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify
 from db import get_connection
 import psycopg2.extras
 import bcrypt
+from utils.validators import validar_correo
 
 usuarios_bp = Blueprint('usuarios', __name__)
 
@@ -63,6 +64,10 @@ def crear_usuario():
     if not all([nombre, username, correo, password, id_rol]):
         return jsonify({ 'success': False, 'message': 'Todos los campos son obligatorios.' }), 400
 
+    es_valido, msj_correo = validar_correo(correo)
+    if not es_valido:
+        return jsonify({ 'success': False, 'message': msj_correo }), 400
+    
     hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     conn = cursor = None
@@ -123,6 +128,10 @@ def gestionar_usuario(id_usuario):
 
     if not all([nombre, username, correo, id_rol]):
         return jsonify({ 'success': False, 'message': 'Todos los campos son obligatorios.' }), 400
+    
+    es_valido, msj_correo = validar_correo(correo)
+    if not es_valido:
+        return jsonify({ 'success': False, 'message': msj_correo }), 400
 
     conn = cursor = None
     try:

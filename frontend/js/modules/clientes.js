@@ -5,7 +5,7 @@
  */
 
 import { API_BASE_URL } from '../core/api.js';
-import { esAdmin } from '../core/auth.js';
+import { esAdmin, getUsuario } from '../core/auth.js';
 import { getIniciales, renderPagBtns, mostrarAlerta, ocultarAlerta } from '../core/utils.js';
 
 const PER_PAGE = 7;
@@ -363,7 +363,7 @@ export async function ejecutarEliminarCliente() {
 }
 
 // ── Exponer al scope global para onclick del HTML ──────────
-window._abrirPerfilCliente      = abrirPerfilCliente;
-window._abrirEditarCliente      = (id) => abrirModalCliente('editar', id);
-window._confirmarEliminarCliente= confirmarEliminarCliente;
-window._cambiarPaginaClientes   = cambiarPagina;
+window._abrirPerfilCliente          = abrirPerfilCliente;
+window._abrirEditarCliente          = (id) => abrirModalCliente('editar', id);
+window._confirmarEliminarCliente    = confirmarEliminarCliente;
+window._cambiarPaginaClientes       = cambiarPagina;

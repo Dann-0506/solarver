@@ -5,7 +5,7 @@
 
 import { API_BASE_URL } from '../core/api.js';
 
-let _reporteActual      = 'faltan';
+let _reporteActual     = 'faltan';
 let _reporteData        = [];
 let _pagaron            = [];
 let _faltan             = [];
@@ -150,14 +150,15 @@ export async function actualizarVistaReporte() {
                 const res = await fetch(`${API_BASE_URL}/api/reportes/ingresos-mensuales`);
                 const data = await res.json();
                 if (data.success) _pagosRealizados = data.pagos;
-            } catch (e) { console.error('Error cargando pagos:', e); }
+            } catch (e) { 
+                console.error('Error cargando pagos:', e); 
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:red">Error al cargar los datos</td></tr>';
+                return;
+            }
         }
 
         if (tituloEl) tituloEl.textContent = "Vista Previa de Ingresos Mensuales";
-        
-        // Cambiar cabecerasconst res = await fetch(`${API_BASE_URL}/api/reportes/ingresos-mensuales`);
-                const data = await res.json();
-                if (data.success) _pagosRealizados = data.pagos;
+
         thead.innerHTML = `
             <tr style="background:var(--bg)">
                 <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Folio</th>
