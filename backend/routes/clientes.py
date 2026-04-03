@@ -6,7 +6,7 @@
 from flask import Blueprint, request, jsonify
 from db import get_connection
 import psycopg2.extras
-from utils.validators import validar_correo, validar_telefono
+from services.validators_service import validar_correo, validar_telefono
 
 clientes_bp = Blueprint('clientes', __name__)
 

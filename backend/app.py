@@ -41,7 +41,7 @@ if __name__ == '__main__':
     print("Iniciando servidor SolarVer...")
     print("API en: http://localhost:5000")
 
-    from services.scheduler import actualizar_estatus_deudas
+    from services.scheduler_service import actualizar_estatus_deudas
     scheduler = BackgroundScheduler(timezone=pytz.timezone('America/Mexico_City'))
     scheduler.add_job(
         actualizar_estatus_deudas,

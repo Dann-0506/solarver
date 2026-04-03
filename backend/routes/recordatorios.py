@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 from db import get_connection
 import psycopg2.extras
 import os
-import requests
+from services.notificaciones_service import enviar_email, enviar_sms
 
 recordatorios_bp = Blueprint('recordatorios', __name__)
 
@@ -44,19 +44,12 @@ def enviar_recordatorios():
     data         = request.get_json()
     ids_clientes = data.get('ids_clientes', [])
     id_usuario   = data.get('id_usuario')
-    # Importante: Si el frontend manda 'whatsapp', lo tratamos como 'sms' para usar la API transaccional
     canal        = data.get('canal', 'email').lower()
 
-    # 1. Carga de variables con valores de respaldo (fallback)
-    api_key        = os.getenv('BREVO_API_KEY')
-    sender_name    = os.getenv('SMS_SENDER_NAME', 'SolarVer')
-    sender_email   = os.getenv('CORREO_REMITENTE', 'proyecto.software.s0l4rver@gmail.com') # <--- ASEGÚRATE QUE ESTE SEA TU CORREO VERIFICADO EN BREVO
     email_template = int(os.getenv('BREVO_EMAIL_REC_TEMPLATE_ID', 3))
-
-    print(f"\n--- INICIO PROCESO DE ENVÍO ({canal.upper()}) ---")
     
-    if not api_key:
-        return jsonify({ 'success': False, 'message': 'API Key no configurada.' }), 500
+    if not ids_clientes:
+        return jsonify({ 'success': False, 'message': 'Selecciona clientes' }), 400
 
     conn = cursor = None
     enviados = 0
@@ -77,75 +70,57 @@ def enviar_recordatorios():
         """, ids_clientes)
         clientes = cursor.fetchall()
 
-        headers = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "api-key": api_key
-        }
-
         for c in clientes:
-            print(f"Procesando: {c['Nombre_Completo']}")
             exito_api = False
             resumen_log = ""
 
             try:
-                # ── CANAL SMS / WHATSAPP (API TRANSACCIONAL) ──
+                # ── LÓGICA SMS / WHATSAPP ──
                 if canal == 'sms' or canal == 'whatsapp':
                     if not c['Telefono']:
                         errores.append(f"{c['Nombre_Completo']} (Sin Teléfono)")
                         continue
-
-                    url = "https://api.brevo.com/v3/transactionalSMS/sms"
-                    payload = {
-                        "sender": sender_name, # Brevo exige que esto no esté vacío
-                        "recipient": str(c['Telefono']),
-                        "content": f"SolarVer: Hola {c['Nombre_Completo']}, tu pago de ${float(c['Saldo_Pendiente']):,.2f} vence el dia {c['Fecha_Pago']}.",
-                        "type": "transactional"
-                    }
-                    resp = requests.post(url, json=payload, headers=headers, timeout=10)
-                    print(f"DEBUG Brevo SMS: {resp.status_code} - {resp.text}")
                     
-                    if resp.status_code in (201, 202):
-                        exito_api = True
+                    texto_sms = f"SolarVer: Hola {c['Nombre_Completo']}, tu pago de ${float(c['Saldo_Pendiente']):,.2f} vence el dia {c['Fecha_Pago']}."
+                    # LLAMADA AL SERVICIO CENTRALIZADO
+                    exito_api, msg_error = enviar_sms(c['Telefono'], texto_sms)
+                    if exito_api:
                         resumen_log = f"SMS enviado al {c['Telefono']}"
+                    else:
+                        errores.append(f"{c['Nombre_Completo']} ({msg_error})")
 
-                # ── CANAL EMAIL ──
+                # ── LÓGICA EMAIL ──
                 else:
                     if not c['Correo']:
-                        # ...
+                        errores.append(f"{c['Nombre_Completo']} (Sin Correo)")
                         continue
 
-                    url = "https://api.brevo.com/v3/smtp/email"
-                    payload = {
-                        "sender": {"name": sender_name, "email": sender_email},
-                        "to": [{"email": c['Correo'], "name": c['Nombre_Completo']}],
-                        "templateId": email_template,
-                        "params": {
-                            "nombre": c['Nombre_Completo'],
-                            "pago_minimo": f"${float(c['Mensualidad']):,.2f}", # ENVIAMOS LA MENSUALIDAD CALCULADA
-                            "dia_pago": str(c['Fecha_Pago'])
-                        }
+                    params = {
+                        "nombre": c['Nombre_Completo'],
+                        "pago_minimo": f"${float(c['Mensualidad']):,.2f}", 
+                        "dia_pago": str(c['Fecha_Pago'])
                     }
-                    resp = requests.post(url, json=payload, headers=headers, timeout=10)
-                    print(f"DEBUG Brevo Email: {resp.status_code} - {resp.text}")
+                    # LLAMADA AL SERVICIO CENTRALIZADO
+                    exito_api, msg_error = enviar_email(c['Correo'], c['Nombre_Completo'], email_template, params)
                     
-                    if resp.status_code in (201, 202):
-                        exito_api = True
+                    if exito_api:
                         resumen_log = f"Correo enviado a {c['Correo']}"
+                    else:
+                        errores.append(f"{c['Nombre_Completo']} ({msg_error})")
 
+                # ── REGISTRO EN DB SI FUE EXITOSO ──
                 if exito_api:
                     cursor.execute("""
                         INSERT INTO "RECORDATORIO" ("Id_Cliente","Id_Usuario","Fecha_Envio","Canal","Mensaje","Estado_Envio")
                         VALUES (%s, %s, NOW(), %s, %s, 'enviado')
                     """, (c['Id_Cliente'], id_usuario, canal.upper(), resumen_log))
-                    
                     enviados += 1
 
             except Exception as e:
-                print(f"Error en bucle: {str(e)}")
+                errores.append(f"{c['Nombre_Completo']} (Excepción local)")
 
         conn.commit()
-        return jsonify({ 'success': True, 'message': f'Se enviaron {enviados} notificaciones.', 'enviados': enviados }), 200
+        return jsonify({ 'success': True, 'message': f'Se enviaron {enviados} notificaciones.', 'enviados': enviados, 'errores': errores }), 200
 
     except Exception as e:
         if conn: conn.rollback()
@@ -153,7 +128,6 @@ def enviar_recordatorios():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
 
 # ── GET /api/recordatorios/historial ──────────────────────
 @recordatorios_bp.route('/recordatorios/historial', methods=['GET'])

@@ -1,3 +1,6 @@
+# Archivo: backend/utils/validators.py
+# Servicio específico para validación de correos y teléfonos utilizando Abstract API
+
 import phonenumbers
 import requests
 import os
