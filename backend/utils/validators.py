@@ -1,57 +1,69 @@
-import dns.resolver
-import smtplib
-import socket
 import phonenumbers
 import requests
 import os
+import re
 
-def validar_correo_smtp(correo):
+def validar_correo(correo):
     """
-    Verifica si el dominio existe y pregunta al servidor SMTP si 
-    la bandeja de entrada específica puede recibir correos.
+    Verifica la validez del correo usando una API externa profesional.
+    Evita problemas de bloqueo del puerto 25 y filtros anti-spam.
     """
     if not correo:
         return True, None
     
+    # 1. Validación rápida de formato con Expresiones Regulares (Regex)
+    # Esto evita gastar peticiones a la API si el correo ni siquiera tiene un '@'
+    patron = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+    if not re.match(patron, correo):
+        return False, "El formato del correo electrónico es inválido."
+        
     try:
-        dominio = correo.split('@')[1]
+        api_key = os.getenv("ABSTRACT_EMAIL_API_KEY")
         
-        # 1. Buscar el servidor de correo (Registro MX)
-        registros = dns.resolver.resolve(dominio, 'MX')
-        servidor_mx = str(registros[0].exchange)
-        
-        # 2. Conectarnos al servidor
-        servidor = smtplib.SMTP(timeout=5)
-        servidor.connect(servidor_mx)
-        servidor.helo(socket.gethostname())
-        servidor.mail("noreply@solarver.com")
-        
-        # 3. Preguntar si el usuario existe
-        codigo_respuesta, mensaje = servidor.rcpt(correo)
-        servidor.quit()
-        
-        if codigo_respuesta == 250:
-            return True, correo.lower()
-        else:
-            return False, "La bandeja de entrada no existe en ese dominio."
+        # Si hay llave configurada, usamos la API profesional
+        # Si hay llave configurada, usamos la API profesional de Reputación
+        if api_key:
+            url = "https://emailreputation.abstractapi.com/v1/"
             
-    except dns.resolver.NXDOMAIN:
-        return False, "El dominio del correo (lo que va después del @) no existe."
+            # 1. Recuperamos el uso de 'params' para seguridad en la red
+            parametros = {
+                "api_key": api_key,
+                "email": correo
+            }
+            
+            respuesta = requests.get(url, params=parametros, timeout=5)
+            
+            if respuesta.status_code == 200:
+                datos = respuesta.json()
+                
+                # 2. Extraemos el bloque anidado que manda la API de reputación
+                info_entrega = datos.get("email_deliverability", {})
+                
+                # 3. Consultamos usando las llaves correctas de esta API específica
+                if info_entrega.get("is_format_valid") is False:
+                    return False, "El formato del correo es incorrecto."
+                    
+                # Esta API utiliza "status" con minúsculas
+                if info_entrega.get("status") == "undeliverable":
+                    return False, "La bandeja de entrada no es accesible."
+                    
+        return True, correo.lower()
+        
     except Exception as e:
-        print(f"Advertencia: No se pudo verificar {correo} por red: {e}")
-        # Si falla la red, lo dejamos pasar para no bloquear al usuario por un error nuestro
+        print(f"Advertencia: Error conectando a la API de correos: {e}")
+        # Failsafe: Permitimos guardar si el servicio externo falla
         return True, correo.lower()
 
-def validar_telefono_wa(telefono, region_default="MX"):
+def validar_telefono(telefono, region_default="MX"):
     """
-    Verifica la estructura del teléfono y lo formatea para WhatsApp.
-    Opcionalmente (si hay token), verifica con la API de Meta.
+    Verifica la estructura del teléfono y opcionalmente comprueba su existencia
+    mediante una API de validación externa.
     """
     if not telefono:
         return True, None
     
     try:
-        # 1. Validar formato lógico (Ej. 10 dígitos en México)
+        # 1. Validar el formato lógico con la librería instalada
         num_parseado = phonenumbers.parse(telefono, region_default)
         if not phonenumbers.is_valid_number(num_parseado):
             return False, "El número de teléfono no es válido para esta región."
@@ -60,17 +72,23 @@ def validar_telefono_wa(telefono, region_default="MX"):
         tel_e164 = phonenumbers.format_number(num_parseado, phonenumbers.PhoneNumberFormat.E164)
         tel_wa = tel_e164.replace('+', '')
         
-        # 2. Verificar en la API de WhatsApp (si tenemos las credenciales)
-        wa_token = os.getenv("WA_ACCESS_TOKEN")
-        wa_phone_id = os.getenv("WA_PHONE_NUMBER_ID")
+        # 2. Verificar existencia de la línea con Abstract API
+        api_key = os.getenv("ABSTRACT_PHONE_API_KEY")
         
-        if wa_token and wa_phone_id and wa_token != "tu_token_temporal_o_permanente_aqui":
-            # Meta no tiene un endpoint "ping", así que la forma de validar si tiene 
-            # WhatsApp es intentar obtener su estado o enviarle un mensaje pre-aprobado.
-            # Por ahora, aseguramos que el formato sea 100% el que Meta exige.
-            pass 
+        if api_key:
+            url = f"https://phoneintelligence.abstractapi.com/v1/?api_key={api_key}&phone={tel_e164}"
+            respuesta = requests.get(url, timeout=5)
             
+            if respuesta.status_code == 200:
+                datos = respuesta.json()
+                # La API devolverá valid = false si el número está inactivo
+                if datos.get("valid") is False:
+                    return False, "La línea telefónica no existe o se encuentra inactiva."
+                    
         return True, tel_wa
         
     except phonenumbers.NumberParseException:
         return False, "Formato de teléfono irreconocible. Revisa los números."
+    except Exception as e:
+        print(f"Advertencia: Error conectando a la API de teléfonos: {e}")
+        return True, tel_wa
