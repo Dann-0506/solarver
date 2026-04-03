@@ -70,7 +70,17 @@ CREATE TABLE "PAGO" (
     "Fecha_Pago"  TIMESTAMP    NOT NULL,
     "Metodo_Pago" VARCHAR(50),
     "Folio"       VARCHAR(100) UNIQUE,
-    "Estado"      VARCHAR(30)  CHECK ("Estado" IN ('completado', 'pendiente', 'cancelado'))
+    "Estado"      VARCHAR(30)  CHECK ("Estado" IN ('completado', 'pendiente', 'cancelado')),
+    "Referencia"  VARCHAR(255)
+);
+
+CREATE TABLE "REFERENCIAPAGO" (
+    "Id_Referencia" SERIAL PRIMARY KEY,
+    "Id_Deuda"      INTEGER NOT NULL,
+    "Clave_Ref"     VARCHAR(50) UNIQUE NOT NULL,
+    "Monto_Esperado" NUMERIC(10,2) NOT NULL,
+    "Fecha_Generacion" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "Estado"        VARCHAR(30) DEFAULT 'Pendiente' CHECK ("Estado" IN ('Pendiente', 'Pagado_Automatico', 'Conciliado_Manual', 'Expirado'))
 );
 
 CREATE TABLE "HISTORIALCAMBIOS" (
@@ -108,6 +118,13 @@ ALTER TABLE "DEUDA"
 
 ALTER TABLE "PAGO"
     ADD CONSTRAINT "Fk_Pago_Deuda"
+    FOREIGN KEY ("Id_Deuda")
+    REFERENCES "DEUDA"("Id_Deuda")
+    ON DELETE CASCADE
+    ON UPDATE CASCADE;
+
+ALTER TABLE "REFERENCIAPAGO"
+    ADD CONSTRAINT "Fk_Referencia_Deuda"
     FOREIGN KEY ("Id_Deuda")
     REFERENCES "DEUDA"("Id_Deuda")
     ON DELETE CASCADE
@@ -162,7 +179,7 @@ INSERT INTO "CLIENTE" ("Nombre_Completo", "Identificacion", "Correo", "Telefono"
     ('Roberto Silva Díaz',   'SIDR780320HVR003', 'roberto.silva@email.com',    '2291100003', 'Calle Juárez 88, Veracruz',       5,  'Activo'),
     ('María García Torres',  'GATM950710MVR004', 'maria.garcia@email.com',     '2291100004', 'Blvd. Manuel Ávila 22, Veracruz', 17, 'Activo'),
     ('Luis Ramírez Vega',    'RAVL881005HVR005', 'luis.ramirez@email.com',     '2291100005', 'Calle Zaragoza 5, Veracruz',      5,  'Activo'),
-    ('Patricia Flores Cruz', 'FOCP010317MVR006', 'patricia.flores@email.com',  '2291100006', 'Av. 20 de Noviembre 34, Veracruz',17, 'Activo');
+    ('Daniel Landero Arias', 'FOCP010317MVR006', 'dlandero2005@gmail.com',  '522291294878', 'Av. 20 de Noviembre 34, Veracruz',17, 'Activo');
 
 -- Deudas iniciales (Añadido Plazo_Meses e Interes_Acumulado)
 INSERT INTO "DEUDA" ("Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Estatus", "Fecha_Ultimo_Corte", "Plazo_Meses", "Interes_Acumulado", "Fecha_Ultima_Penalizacion") VALUES
