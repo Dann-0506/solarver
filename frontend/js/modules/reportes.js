@@ -273,6 +273,45 @@ export async function actualizarVistaReporte() {
     }
 }
 
+export async function enviarEstadosDeCuenta() {
+    const tipo = document.getElementById('selTipoReporte').value;
+    
+    if (tipo === 'realizados') {
+        alert("Esta acción solo está disponible para reportes de cobranza.");
+        return;
+    }
+
+    const confirmacion = confirm(`¿Enviar los Estados de Cuenta en PDF por correo a la lista de "${tipo.toUpperCase()}"?`);
+    if (!confirmacion) return;
+
+    const btn = event.target;
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+        const url = `${API_BASE_URL}/api/reportes/enviar-masivo`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: tipo })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+            alert("✅ " + data.message);
+        } else {
+            alert("⚠️ " + data.message);
+        }
+    } catch (e) {
+        alert("Error: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+    }
+}
+
+window.enviarEstadosDeCuenta = enviarEstadosDeCuenta;
 window.actualizarVistaReporte = actualizarVistaReporte;
 window.mostrarSubreporte = mostrarSubreporte;
 window.descargarReporte = descargarReporte;

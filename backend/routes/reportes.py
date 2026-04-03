@@ -9,6 +9,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 import io
 from datetime import datetime
+from utils.brevo_service import iniciar_envio_masivo
+
 
 reportes_bp = Blueprint('reportes', __name__)
 
@@ -159,6 +161,51 @@ def exportar_reporte():
             
             output.seek(0)
             return send_file(output, mimetype='application/pdf', as_attachment=True, download_name=f"Reporte_{tipo}.pdf")
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+@reportes_bp.route('/reportes/enviar-masivo', methods=['POST'])
+def enviar_estados_cuenta():
+    data = request.get_json()
+    tipo = data.get('tipo', 'integral') 
+    
+    if tipo == 'realizados':
+        return jsonify({'success': False, 'message': 'Solo se pueden enviar estados de cuenta a clientes con deuda activa.'}), 400
+
+    conn = cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Filtramos solo a los que tienen Correo configurado
+        query = """
+            SELECT c."Nombre_Completo" as "Cliente", c."Correo",
+                   c."Fecha_Pago" as "Dia_Pago", d."Saldo_Pendiente", d."Estatus"
+            FROM "CLIENTE" c
+            JOIN "DEUDA" d ON d."Id_Cliente" = c."Id_Cliente"
+            WHERE d."Saldo_Pendiente" > 0 AND c."Correo" IS NOT NULL
+        """
+        
+        if tipo == 'pendiente': query += " AND d.\"Estatus\" = 'pendiente'"
+        elif tipo == 'atrasado': query += " AND d.\"Estatus\" = 'atrasado'"
+        
+        cursor.execute(query)
+        clientes = cursor.fetchall()
+
+        if not clientes:
+            return jsonify({'success': False, 'message': 'Ningún cliente en esta categoría tiene correo registrado.'}), 404
+
+        # Disparamos la generación de PDFs y correos en segundo plano
+        iniciar_envio_masivo(clientes)
+
+        return jsonify({
+            'success': True, 
+            'message': f'Generando y enviando estados de cuenta adjuntos a {len(clientes)} clientes. Puedes seguir trabajando.'
+        }), 202
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
