@@ -2,7 +2,10 @@
 #  Servicio específico para tareas programadas (scheduler) como actualización de estatus e intereses.
 
 from db import get_connection
-from datetime import datetime
+from datetime import datetime, timedelta
+from .notificaciones_service import enviar_instrucciones_pago
+import random
+import string
 import psycopg2.extras
 import pytz
 
@@ -121,3 +124,69 @@ def actualizar_estatus_deudas(fecha_simulada=None):
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
+
+
+def procesar_cobros_automaticos():
+    """Busca clientes que vencen en 5 días, genera una referencia única y delega el envío de instrucciones."""
+    tz = pytz.timezone('America/Mexico_City')
+    hoy = datetime.now(tz)
+    
+    # Calculamos qué día de corte estamos buscando (hoy + 5 días)
+    dia_objetivo = (hoy + timedelta(days=5)).day
+    if dia_objetivo not in [5, 17]:
+        return 0
+
+    conn = cursor = None
+    enviados = 0
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Buscamos deudas activas que vencen en el día objetivo
+        cursor.execute("""
+            SELECT c.*, d."Id_Deuda", d."Saldo_Pendiente", (d."Monto_Total" / d."Plazo_Meses") as "Mensualidad"
+            FROM "CLIENTE" c
+            JOIN "DEUDA" d ON c."Id_Cliente" = d."Id_Cliente"
+            WHERE c."Fecha_Pago" = %s AND d."Saldo_Pendiente" > 0 AND c."Estado" = 'Activo'
+        """, (dia_objetivo,))
+        
+        clientes = cursor.fetchall()
+        
+        for c in clientes:
+            monto_a_cobrar = min(float(c['Mensualidad']), float(c['Saldo_Pendiente']))
+            
+            # 1. Generar Clave de Referencia Única (Ej: SOL-12-A8F9)
+            random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            clave_ref = f"SOL-{c['Id_Deuda']}-{random_str}"
+            
+            # 2. Guardar la referencia en la base de datos
+            cursor.execute("""
+                INSERT INTO "REFERENCIAPAGO" ("Id_Deuda", "Clave_Ref", "Monto_Esperado", "Estado")
+                VALUES (%s, %s, %s, 'Pendiente')
+            """, (c['Id_Deuda'], clave_ref, monto_a_cobrar))
+            
+            # 3. Empaquetar datos y delegar TODO al servicio de notificaciones
+            datos_pago = {
+                'Correo': c['Correo'],
+                'Nombre_Completo': c['Nombre_Completo'],
+                'Monto': monto_a_cobrar,
+                'Referencia': clave_ref,
+                'Fecha_Limite': (hoy + timedelta(days=5)).strftime('%d/%m/%Y')
+            }
+            
+            enviado = enviar_instrucciones_pago(datos_pago)
+            
+            if enviado:
+                print(f"Referencia enviada con éxito: {clave_ref} para {c['Nombre_Completo']}")
+                enviados += 1
+            
+        conn.commit()
+        return enviados
+        
+    except Exception as e:
+        if conn: conn.rollback()
+        print(f"Error en cobro automático referenciado: {e}")
+        return 0
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()

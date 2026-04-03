@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from concurrent.futures import ThreadPoolExecutor
-from .documentos_service import generar_pdf_base64
+from .documentos_service import generar_pdf_base64, generar_pdf_instrucciones_pago
 
 executor = ThreadPoolExecutor(max_workers=3)
 
@@ -102,6 +102,10 @@ def enviar_estado_cuenta(cliente):
     
     # Delegamos a la función genérica
     exito, mensaje = enviar_email(cliente['Correo'], cliente['Cliente'], template_id, params, adjunto)
+
+    if not exito:
+        logging.error(f"Error al enviar estado de cuenta a {cliente['Correo']}: {mensaje}")
+
     return exito
 
 def procesar_lote_reportes(lista_clientes):
@@ -112,3 +116,38 @@ def procesar_lote_reportes(lista_clientes):
 def iniciar_envio_masivo(lista_clientes):
     """Delega el trabajo al hilo para no bloquear el Frontend."""
     executor.submit(procesar_lote_reportes, lista_clientes)
+
+
+def enviar_instrucciones_pago(datos_pago):
+    """Arma el PDF de instrucciones y llama al servicio genérico de email."""
+    if not datos_pago.get('Correo'):
+        return False
+        
+    template_id = int(os.getenv("BREVO_INSTRUCCIONES_PAGO_TEMPLATE_ID", 2))
+    
+    # Generamos el PDF con los datos del diccionario
+    pdf_b64 = generar_pdf_instrucciones_pago(
+        cliente_nombre=datos_pago['Nombre_Completo'],
+        monto=datos_pago['Monto'],
+        clave_referencia=datos_pago['Referencia'],
+        fecha_limite=datos_pago['Fecha_Limite']
+    )
+    
+    adjunto = {
+        "content": pdf_b64,
+        "name": f"Instrucciones_Pago_{datos_pago['Referencia']}.pdf"
+    }
+    
+    params = {
+        "nombre": datos_pago['Nombre_Completo'],
+        "monto": f"${datos_pago['Monto']:,.2f}",
+        "referencia": datos_pago['Referencia']
+    }
+    
+    # Delegamos a la función genérica
+    exito, mensaje = enviar_email(datos_pago['Correo'], datos_pago['Nombre_Completo'], template_id, params, adjunto)
+
+    if not exito:
+        logging.error(f"Error al enviar instrucciones a {datos_pago['Correo']}: {mensaje}")
+
+    return exito

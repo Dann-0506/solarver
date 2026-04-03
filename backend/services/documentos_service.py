@@ -96,3 +96,63 @@ def generar_pdf_reporte(datos, tipo):
     
     output.seek(0)
     return output
+
+
+def generar_pdf_instrucciones_pago(cliente_nombre, monto, clave_referencia, fecha_limite):
+    """
+    Genera un PDF con las instrucciones de transferencia bancaria referenciada
+    y lo devuelve codificado en Base64 para adjuntarlo en un correo.
+    """
+    output = io.BytesIO()
+    p = canvas.Canvas(output, pagesize=letter)
+    
+    # Encabezado
+    p.setFont("Helvetica-Bold", 18)
+    p.drawString(100, 730, "SolarVer - Instrucciones de Pago")
+    
+    # Datos del cliente y fecha
+    p.setFont("Helvetica", 12)
+    p.drawString(100, 690, f"Estimado/a: {cliente_nombre}")
+    p.drawString(100, 670, f"Fecha límite de pago: {fecha_limite}")
+    
+    # Caja de instrucciones principales
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(100, 620, "Detalles para realizar su transferencia:")
+    
+    p.setFont("Helvetica", 12)
+    p.drawString(120, 590, "1. Ingrese a la aplicación de su banco.")
+    p.drawString(120, 570, "2. Dé de alta la siguiente cuenta CLABE (Banco STP):")
+    
+    # Datos bancarios simulados (Aquí irían los datos reales de la empresa)
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(140, 550, "CLABE: 646180123456789012")
+    p.drawString(140, 530, "Beneficiario: SolarVer S.A. de C.V.")
+    
+    p.setFont("Helvetica", 12)
+    p.drawString(120, 490, "3. Ingrese el monto exacto a pagar:")
+    p.setFont("Helvetica-Bold", 14)
+    p.setFillColor(colors.red)
+    p.drawString(140, 470, f"${monto:,.2f} MXN")
+    p.setFillColor(colors.black)
+    
+    p.setFont("Helvetica", 12)
+    p.drawString(120, 430, "4. Es OBLIGATORIO colocar la siguiente clave en el")
+    p.drawString(140, 410, "campo de 'Concepto' o 'Referencia' de su banco:")
+    
+    # Referencia destacada
+    p.setFont("Helvetica-Bold", 16)
+    p.setFillColor(colors.darkblue)
+    p.drawString(140, 380, clave_referencia)
+    p.setFillColor(colors.black)
+    
+    # Nota final
+    p.setFont("Helvetica-Oblique", 10)
+    p.drawString(100, 320, "Nota: Si no coloca el concepto correctamente, su pago no se registrará automáticamente")
+    p.drawString(100, 305, "y deberá contactar a un administrador para su conciliación manual.")
+    
+    p.showPage()
+    p.save()
+    
+    pdf_bytes = output.getvalue()
+    output.close()
+    return base64.b64encode(pdf_bytes).decode('utf-8')

@@ -8,12 +8,13 @@ from flask_cors import CORS
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from routes.auth          import auth_bp
-from routes.usuarios      import usuarios_bp
-from routes.clientes      import clientes_bp
-from routes.pagos         import pagos_bp
-from routes.recordatorios import recordatorios_bp
-from routes.reportes      import reportes_bp
+from routes.auth           import auth_bp
+from routes.usuarios       import usuarios_bp
+from routes.clientes       import clientes_bp
+from routes.pagos          import pagos_bp
+from routes.recordatorios  import recordatorios_bp
+from routes.reportes       import reportes_bp
+from routes.conciliaciones import conciliaciones_bp
 
 app = Flask(__name__)
 
@@ -30,6 +31,7 @@ app.register_blueprint(clientes_bp,       url_prefix='/api')
 app.register_blueprint(pagos_bp,          url_prefix='/api')
 app.register_blueprint(recordatorios_bp,  url_prefix='/api')
 app.register_blueprint(reportes_bp,       url_prefix='/api')
+app.register_blueprint(conciliaciones_bp, url_prefix='/api')
 
 # ── Health check ───────────────────────────────────────────
 @app.route('/api/health', methods=['GET'])

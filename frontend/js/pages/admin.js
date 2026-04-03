@@ -18,12 +18,13 @@ import { cargarClientes, cargarStats, filterTable, toggleFilter,
          cerrarDeleteClienteModal, cerrarPerfilModal } from '../modules/clientes.js';
 import { cargarPagos, abrirModalPago, cerrarModalPago, cerrarComprobante,
          filtrarClientesPago, verificarMonto, guardarPago } from '../modules/pagos.js';
+import { cargarConciliaciones } from '../modules/conciliaciones.js';
 import { cargarClientesRec, seleccionarTodosRec,
          enviarRecordatorios, cargarHistorialRec } from '../modules/recordatorios.js';
 import { mostrarSubreporte, descargarReporte, actualizarVistaReporte } from '../modules/reportes.js';
 import { cargarHistorial } from '../modules/historial.js';
 
-const TABS = ['dashboard','clientes','pagos','notificaciones','usuarios','historial','reportes','respaldos'];
+const TABS = ['dashboard','clientes','pagos','conciliaciones','notificaciones','usuarios','historial','reportes','respaldos'];
 
 document.addEventListener('DOMContentLoaded', async () => {
 
@@ -101,6 +102,7 @@ function showTab(name) {
     if (name === 'dashboard')       {cargarListasDashboard(); cargarStatsDashboard();}
     if (name === 'clientes')       { cargarClientes(); cargarStats();}
     if (name === 'pagos')          cargarPagos('pagosTableBody', 'pagosInfo', 'pagosBtns');
+    if (name === 'conciliaciones') cargarConciliaciones();
     if (name === 'notificaciones') { cargarClientesRec(); cargarHistorialRec(); }
     if (name === 'usuarios')       cargarUsuarios();
     if (name === 'historial')      cargarHistorial();
