@@ -1,7 +1,5 @@
-# ─────────────────────────────────────────
-#  SolarVer – Rutas de Pagos
-#  Archivo: backend/routes/pagos.py
-# ─────────────────────────────────────────
+# Archivo: backend/routes/pagos.py
+# Rutas para gestión de pagos, generación de folios y actualización de estatus de deuda
 
 from flask import Blueprint, request, jsonify
 from db import get_connection

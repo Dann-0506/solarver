@@ -1,13 +1,11 @@
-# ─────────────────────────────────────────
-#  SolarVer – Rutas de Usuarios
-#  Archivo: backend/routes/usuarios.py
-# ─────────────────────────────────────────
+# Archivo: backend/routes/usuarios.py
+# Rutas para gestión de usuarios y roles.
 
 from flask import Blueprint, request, jsonify
 from db import get_connection
 import psycopg2.extras
 import bcrypt
-from utils.validators import validar_correo
+from services.validators_service import validar_correo
 
 usuarios_bp = Blueprint('usuarios', __name__)
 

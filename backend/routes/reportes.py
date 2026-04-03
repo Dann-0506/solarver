@@ -1,16 +1,11 @@
+# Archivo: backend/routes/reportes.py
+# Rutas para generación de reportes y envío masivo de estados de cuenta.
+
 from flask import Blueprint, jsonify, request, send_file
 from db import get_connection
 import psycopg2.extras
-import pandas as pd
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
-import io
-from datetime import datetime
-from utils.brevo_service import iniciar_envio_masivo
-
+from services.notificaciones_service import iniciar_envio_masivo
+from services.documentos_service import generar_excel_reporte, generar_pdf_reporte
 
 reportes_bp = Blueprint('reportes', __name__)
 
@@ -40,7 +35,7 @@ def get_estado_mensual():
         if cursor: cursor.close()
         if conn: conn.close()
 
-# NUEVO ENDPOINT: Para la vista previa web de pagos (último mes)
+
 @reportes_bp.route('/reportes/ingresos-mensuales', methods=['GET'])
 def get_ingresos_mensuales():
     conn = cursor = None
@@ -112,54 +107,13 @@ def exportar_reporte():
             cursor.execute(query)
             datos = cursor.fetchall()
 
+        # ── DELEGACIÓN DE LA CREACIÓN DEL DOCUMENTO AL SERVICIO ──
         if formato == 'excel':
-            df = pd.DataFrame(datos)
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name='Reporte')
-            output.seek(0)
+            output = generar_excel_reporte(datos)
             return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                              as_attachment=True, download_name=f"Reporte_{tipo}.xlsx")
-
-        else:  # PDF
-            output = io.BytesIO()
-            doc = SimpleDocTemplate(output, pagesize=landscape(letter))
-            elements = []
-            styles = getSampleStyleSheet()
-            
-            titulo = "SolarVer - Reporte de Pagos Realizados" if tipo == 'realizados' else f"SolarVer - Reporte de Cobranza ({tipo.upper()})"
-            elements.append(Paragraph(titulo, styles['Title']))
-            
-            # Subtítulo dinámico indicando el periodo
-            if tipo == 'realizados':
-                elements.append(Paragraph(f"Periodo: Últimos 30 días (Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')})", styles['Normal']))
-            else:
-                elements.append(Paragraph(f"Periodo: Estado al corte actual (Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')})", styles['Normal']))
-            
-            # Resto de la generación del PDF...
-            if tipo == 'realizados':
-                tabla_data = [["Folio", "Cliente", "Contacto (Tel / Correo)", "Monto", "Método", "Fecha"]]
-                for d in datos:
-                    contacto = f"{d['Telefono'] or '-'} / {d['Correo'] or '-'}"
-                    tabla_data.append([d['Folio'], str(d['Cliente'])[:25], contacto[:35], f"${d['Monto']:,.2f}", d['Metodo_Pago'], str(d['Fecha_Pago'])])
-            else:
-                tabla_data = [["Cliente", "Contacto (Tel / Correo)", "Día Pago", "Saldo", "Interés", "Estatus"]]
-                for d in datos:
-                    contacto = f"{d['Telefono'] or '-'} / {d['Correo'] or '-'}"
-                    tabla_data.append([str(d['Cliente'])[:25], contacto[:35], str(d['Dia_Pago']), f"${d['Saldo_Pendiente']:,.2f}", f"${d['Interes_Acumulado']:,.2f}", str(d['Estatus']).capitalize()])
-            
-            t = Table(tabla_data)
-            t.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ]))
-            elements.append(t)
-            doc.build(elements)
-            
-            output.seek(0)
+        else:
+            output = generar_pdf_reporte(datos, tipo)
             return send_file(output, mimetype='application/pdf', as_attachment=True, download_name=f"Reporte_{tipo}.pdf")
 
     except Exception as e:
@@ -167,6 +121,7 @@ def exportar_reporte():
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
+
 
 @reportes_bp.route('/reportes/enviar-masivo', methods=['POST'])
 def enviar_estados_cuenta():
@@ -199,7 +154,6 @@ def enviar_estados_cuenta():
         if not clientes:
             return jsonify({'success': False, 'message': 'Ningún cliente en esta categoría tiene correo registrado.'}), 404
 
-        # Disparamos la generación de PDFs y correos en segundo plano
         iniciar_envio_masivo(clientes)
 
         return jsonify({
