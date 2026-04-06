@@ -38,10 +38,23 @@ def recibir_pago_automatico():
 
         # Escenario B: Referencia huérfana, inválida o ya procesada
         if not ref_db:
+            # 1. Generar un folio especial para identificar rápidamente los pagos huérfanos
+            cursor.execute("SELECT nextval('folio_seq') AS num")
+            folio = f"FOL-HUERF-{cursor.fetchone()['num']}"
+
+            # 2. Registrar el dinero en el sistema SIN asignarlo a una deuda (Id_Deuda = NULL)
+            cursor.execute("""
+                INSERT INTO "PAGO" ("Id_Deuda", "Monto", "Fecha_Pago", "Metodo_Pago", "Folio", "Estado", "Referencia_Externa")
+                VALUES (NULL, %s, NOW(), 'Transferencia_Desconocida', %s, 'pendiente', %s)
+            """, (monto_recibido, folio, referencia))
+            
+            conn.commit()
+
+            # 3. Le respondemos al banco con un 200 OK para que sepan que registramos el movimiento
             return jsonify({
-                'success': False, 
-                'message': 'Referencia no encontrada o ya procesada. El pago requiere conciliación manual.'
-            }), 404
+                'success': True, 
+                'message': 'Dinero recibido, pero la referencia no coincide. Guardado como pago huérfano para conciliación manual.'
+            }), 200
 
         # Escenario A: ¡Hace match! Empezamos a procesar el pago
         id_deuda = ref_db['Id_Deuda']
