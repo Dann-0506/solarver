@@ -126,10 +126,10 @@ def actualizar_estatus_deudas(fecha_simulada=None):
         if conn:   conn.close()
 
 
-def procesar_cobros_automaticos():
+def procesar_cobros_automaticos(fecha_simulada=None):
     """Busca clientes que vencen en 5 días, genera una referencia única y delega el envío de instrucciones."""
     tz = pytz.timezone('America/Mexico_City')
-    hoy = datetime.now(tz)
+    hoy = fecha_simulada if fecha_simulada else datetime.now(tz)
     
     # Calculamos qué día de corte estamos buscando (hoy + 5 días)
     dia_objetivo = (hoy + timedelta(days=5)).day
