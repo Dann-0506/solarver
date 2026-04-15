@@ -71,7 +71,7 @@ CREATE TABLE "PAGO" (
     "Metodo_Pago" VARCHAR(50),
     "Folio"       VARCHAR(100) UNIQUE,
     "Estado"      VARCHAR(30)  CHECK ("Estado" IN ('completado', 'pendiente', 'cancelado')),
-    "Referencia"  VARCHAR(255)
+    "Referencia_Externa"  VARCHAR(255)
 );
 
 CREATE TABLE "REFERENCIAPAGO" (
