@@ -26,15 +26,9 @@ def validar_correo(correo):
         # Si hay llave configurada, usamos la API profesional
         # Si hay llave configurada, usamos la API profesional de Reputación
         if api_key:
-            url = "https://emailreputation.abstractapi.com/v1/"
+            url = f"https://emailreputation.abstractapi.com/v1/?api_key={api_key}&email={correo}"
             
-            # 1. Recuperamos el uso de 'params' para seguridad en la red
-            parametros = {
-                "api_key": api_key,
-                "email": correo
-            }
-            
-            respuesta = requests.get(url, params=parametros, timeout=5)
+            respuesta = requests.get(url, timeout=5)
             
             if respuesta.status_code == 200:
                 datos = respuesta.json()
