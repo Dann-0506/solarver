@@ -51,34 +51,50 @@ def enviar_email(to_email, to_name, template_id, params, adjunto=None):
         return False, str(e)
 
 def enviar_sms(telefono, mensaje):
-    """Función genérica para enviar SMS transaccionales a través de Brevo."""
-    api_key = os.getenv("BREVO_API_KEY")
+    """Función genérica para enviar SMS transaccionales a través de Infobip."""
+    api_key = os.getenv("INFOBIP_API_KEY")
+    base_url = os.getenv("INFOBIP_BASE_URL")
     sender_name = os.getenv("SMS_SENDER_NAME", "SolarVer")
     
-    if not api_key or not telefono:
-        return False, "API Key o teléfono faltante"
+    if not api_key or not base_url or not telefono:
+        return False, "API Key, Base URL o teléfono faltante"
 
-    url = "https://api.brevo.com/v3/transactionalSMS/sms"
+    # Infobip prefiere el número en formato internacional, sin signos de '+'
+    telefono_limpio = str(telefono).replace("+", "").replace(" ", "").replace("-", "")
+
+    if len(telefono_limpio) == 10:
+        telefono_limpio = f"52{telefono_limpio}"
+
+    # Endpoint avanzado de Infobip para SMS
+    url = f"{base_url}/sms/2/text/advanced"
+    
     headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "api-key": api_key
+        "Authorization": f"App {api_key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
     
     payload = {
-        "sender": sender_name,
-        "recipient": str(telefono),
-        "content": mensaje,
-        "type": "transactional"
+        "messages": [
+            {
+                "destinations": [{"to": telefono_limpio}],
+                "from": sender_name,
+                "text": mensaje
+            }
+        ]
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        if response.status_code in (201, 202):
-            return True, "SMS enviado con éxito"
+        # Mantenemos el timeout alto para evitar problemas de red
+        response = requests.post(url, json=payload, headers=headers, timeout=45)
+        
+        # Infobip responde con 200 OK cuando tiene éxito
+        if response.status_code == 200:
+            return True, "SMS enviado con éxito (Infobip)"
         else:
-            logging.error(f"Error Brevo SMS ({telefono}): {response.text}")
+            logging.error(f"Error Infobip SMS ({telefono}): {response.text}")
             return False, f"Error API: {response.status_code}"
+            
     except Exception as e:
         logging.error(f"Error de red SMS a {telefono}: {e}")
         return False, str(e)
