@@ -57,7 +57,7 @@ def conciliar_manual(id_referencia):
 
         cursor.execute("""
             INSERT INTO "PAGO" ("Id_Deuda","Monto","Fecha_Pago","Metodo_Pago","Folio","Estado","Referencia_Externa")
-            VALUES (%s, %s, NOW(), 'Transferencia_Manual', %s, 'completado', %s)
+            VALUES (%s, %s, NOW(), 'Conciliación', %s, 'completado', %s)
         """, (id_deuda, monto, folio, ref['Clave_Ref']))
 
         cursor.execute('UPDATE "REFERENCIAPAGO" SET "Estado" = %s WHERE "Id_Referencia" = %s', ('Conciliado_Manual', id_referencia))

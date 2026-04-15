@@ -181,8 +181,11 @@ def procesar_cobros_automaticos(fecha_simulada=None):
             if enviado:
                 print(f"Referencia enviada con éxito: {clave_ref} para {c['Nombre_Completo']}")
                 enviados += 1
-            
-        conn.commit()
+                conn.commit()
+            else:
+                print(f"Error al enviar referencia: {clave_ref} para {c['Nombre_Completo']}")
+                conn.rollback()
+        
         return enviados
         
     except Exception as e:

@@ -123,7 +123,7 @@ def enviar_instrucciones_pago(datos_pago):
     if not datos_pago.get('Correo'):
         return False
         
-    template_id = int(os.getenv("BREVO_INSTRUCCIONES_PAGO_TEMPLATE_ID", 2))
+    template_id = int(os.getenv("BREVO_INSTRUCCIONES_PAGO_TEMPLATE_ID", 4))
     
     # Generamos el PDF con los datos del diccionario
     pdf_b64 = generar_pdf_instrucciones_pago(
