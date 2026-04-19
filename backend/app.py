@@ -16,6 +16,7 @@ from routes.recordatorios   import recordatorios_bp
 from routes.reportes        import reportes_bp
 from routes.conciliaciones  import conciliaciones_bp
 from routes.webhooks        import webhooks_bp
+from routes.respaldos       import respaldos_bp
 
 app = Flask(__name__)
 
@@ -36,6 +37,7 @@ app.register_blueprint(recordatorios_bp,    url_prefix='/api')
 app.register_blueprint(reportes_bp,         url_prefix='/api')
 app.register_blueprint(conciliaciones_bp,   url_prefix='/api')
 app.register_blueprint(webhooks_bp,         url_prefix='/api')
+app.register_blueprint(respaldos_bp,        url_prefix='/api')
 
 # ── Health check ───────────────────────────────────────────
 @app.route('/api/health', methods=['GET'])
