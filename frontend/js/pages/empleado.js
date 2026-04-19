@@ -101,10 +101,13 @@ function actualizarAvatar() {
     if (usuario && usuario.foto) {
         const rutaLimpia = usuario.foto.startsWith('/') ? usuario.foto.substring(1) : usuario.foto;
         const urlFoto = usuario.foto.startsWith('http') ? usuario.foto : `${API_BASE_URL}/${rutaLimpia}`;
-        initalsEl.innerHTML = `<img src="${urlFoto}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+
+        initalsEl.innerHTML = `<img src="${urlFoto}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" onerror="this.parentElement.innerHTML='${getIniciales(usuario.nombre)}';this.parentElement.style.padding='';">`;
         initalsEl.style.backgroundColor = 'transparent';
+        initalsEl.style.padding = '0';
     } else if (usuario) {
         initalsEl.textContent = getIniciales(usuario.nombre);
         initalsEl.style.background = '';
+        initalsEl.style.padding = '';
     }
 }

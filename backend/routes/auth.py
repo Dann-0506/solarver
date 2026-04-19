@@ -31,7 +31,7 @@ def login():
 
         cursor.execute("""
             SELECT u."Id_Usuario", u."Nombre", u."Username", u."Contrasena",
-                   u."Estado", u."Intentos_Fallidos", u."Fecha_Bloqueo", r."Nombre_Rol"
+                   u."Estado", u."Intentos_Fallidos", u."Fecha_Bloqueo", u."Foto_Perfil", r."Nombre_Rol"
             FROM   "USUARIO" u
             JOIN   "ROL"     r ON u."Id_Rol" = r."Id_Rol"
             WHERE  u."Username" = %s
@@ -92,6 +92,7 @@ def login():
                 'nombre'  : usuario['Nombre'],
                 'username': usuario['Username'],
                 'rol'     : usuario['Nombre_Rol'],
+                'foto'    : usuario['Foto_Perfil']
             },
             'redirect': redirect
         }), 200
