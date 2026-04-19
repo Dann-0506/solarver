@@ -21,8 +21,9 @@ export async function cargarRespaldos() {
                     </td>
                     
                     <td>
-                        <span style="font-size: 0.75rem; background: var(--bg); padding: 4px 8px; border-radius: 4px; color: var(--muted); font-weight: 600;">
-                            Respaldo SQL
+                        <span style="font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; font-weight: 600; 
+                            ${r.tipo === 'Automático' ? 'background: #E8F0FE; color: var(--blue);' : 'background: #F3F4F6; color: var(--muted);'}">
+                            ${r.tipo}
                         </span>
                     </td>
                     
@@ -54,11 +55,17 @@ export async function cargarRespaldos() {
 
 export async function crearRespaldo() {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/respaldos`, { method: 'POST' });
+        const res = await fetch(`${API_BASE_URL}/api/respaldos`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: 'manual' })
+        });
         const data = await res.json();
         if (data.success) {
-            alert('Respaldo creado con éxito.');
+            alert('Respaldo manual creado con éxito.');
             cargarRespaldos();
+        } else {
+            alert('Error: ' + data.message);
         }
     } catch (e) { alert('Error al crear respaldo'); }
 }
