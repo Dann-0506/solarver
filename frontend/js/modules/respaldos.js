@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../core/api.js';
 
 export async function cargarRespaldos() {
+    actualizarVistaConfig();
     const tbody = document.getElementById('tablaRespaldosBody');
     if (!tbody) return;
 
@@ -150,11 +151,47 @@ export async function guardarConfigRespaldos() {
         if (data.success) {
             alert('¡Configuración de respaldos automáticos guardada!');
             cerrarConfigRespaldos();
+            actualizarVistaConfig();
         }
     } catch(e) {
         alert('Error al guardar.');
     } finally {
         btn.innerText = 'Guardar';
         btn.disabled = false;
+    }
+}
+
+export async function actualizarVistaConfig() {
+    const titleEl = document.getElementById('configVistaTitulo');
+    const subEl = document.getElementById('configVistaSub');
+    if (!titleEl || !subEl) return;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/respaldos/config`);
+        const data = await res.json();
+        
+        if (data.success && data.config) {
+            const { frecuencia, hora } = data.config;
+            
+            let textoTitulo = "";
+            let textoSub = "";
+
+            if (frecuencia === 'diario') {
+                textoTitulo = "Respaldo automático diario";
+                textoSub = `Programado · Todos los días a las ${hora}`;
+            } else if (frecuencia === 'semanal') {
+                textoTitulo = "Respaldo automático semanal";
+                textoSub = `Programado · Domingos a las ${hora}`;
+            } else if (frecuencia === 'mensual') {
+                textoTitulo = "Respaldo automático mensual";
+                textoSub = `Programado · Día 1 del mes a las ${hora}`;
+            }
+
+            titleEl.innerText = textoTitulo;
+            subEl.innerText = textoSub;
+        }
+    } catch (e) {
+        titleEl.innerText = "Error de conexión";
+        subEl.innerText = "No se pudo leer la configuración";
     }
 }
