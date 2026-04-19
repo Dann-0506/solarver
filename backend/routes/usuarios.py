@@ -229,3 +229,46 @@ def actualizar_perfil(id_usuario):
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
+
+
+@usuarios_bp.route('/usuarios/perfil/<int:id_usuario>/password', methods=['PUT'])
+def actualizar_password_perfil(id_usuario):
+    data = request.json
+    pass_actual = data.get('password_actual')
+    pass_nueva = data.get('password_nueva')
+
+    if not pass_actual or not pass_nueva:
+        return jsonify({'success': False, 'message': 'Faltan datos requeridos.'}), 400
+
+    conn = cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        cursor.execute('SELECT "Contrasena" FROM "USUARIO" WHERE "Id_Usuario" = %s', (id_usuario,))
+        usuario = cursor.fetchone()
+
+        if not usuario:
+            return jsonify({'success': False, 'message': 'Usuario no encontrado.'}), 404
+
+        contrasena_bd = usuario['Contrasena'].encode('utf-8')
+        if not bcrypt.checkpw(pass_actual.encode('utf-8'), contrasena_bd):
+            return jsonify({'success': False, 'message': 'La contraseña actual es incorrecta.'}), 401
+
+        salt = bcrypt.gensalt()
+        hash_nuevo = bcrypt.hashpw(pass_nueva.encode('utf-8'), salt).decode('utf-8')
+        
+        cursor.execute(
+            'UPDATE "USUARIO" SET "Contrasena" = %s WHERE "Id_Usuario" = %s', 
+            (hash_nuevo, id_usuario)
+        )
+        conn.commit()
+
+        return jsonify({'success': True, 'message': 'Contraseña actualizada con éxito.'}), 200
+
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
