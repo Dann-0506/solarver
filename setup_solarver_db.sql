@@ -35,12 +35,6 @@ CREATE TABLE "USUARIO" (
 
     CONSTRAINT "Chk_Intentos_Fallidos"
         CHECK ("Intentos_Fallidos" BETWEEN 0 AND 3),
-
-    CONSTRAINT "Fk_Usuario_Rol"
-        FOREIGN KEY ("Id_Rol")
-        REFERENCES "ROL"("Id_Rol")
-        ON DELETE SET NULL
-        ON UPDATE CASCADE
 );
 
 CREATE TABLE "CLIENTE" (
@@ -111,6 +105,13 @@ CREATE SEQUENCE folio_seq START 500000;
 -- ═══════════════════════════════════════════════════════════
 --  3. RELACIONES
 -- ═══════════════════════════════════════════════════════════
+
+ALTER TABLE "USUARIO"
+    ADD CONSTRAINT "Fk_Usuario_Rol"
+    FOREIGN KEY ("Id_Rol")
+    REFERENCES "ROL"("Id_Rol")
+    ON DELETE SET NULL
+    ON UPDATE CASCADE;
 
 ALTER TABLE "DEUDA"
     ADD CONSTRAINT "Fk_Deuda_Cliente"
