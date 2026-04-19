@@ -32,5 +32,6 @@ export async function loadSharedTabs() {
         loadPartial('tab-clientes',       '/partials/tab-clientes.html'),
         loadPartial('tab-pagos',          '/partials/tab-pagos.html'),
         loadPartial('tab-notificaciones', '/partials/tab-notificaciones.html'),
+        loadPartial('tab-perfil',         '/partials/tab-perfil.html'),
     ]);
 }
