@@ -49,7 +49,7 @@ if __name__ == '__main__':
     print("Iniciando servidor SolarVer...")
     print("API en: http://localhost:5000")
 
-    from services.scheduler_service import actualizar_estatus_deudas, procesar_cobros_automaticos
+    from services.scheduler_service import actualizar_estatus_deudas, procesar_cobros_automaticos, procesar_respaldos_automaticos
     scheduler = BackgroundScheduler(timezone=pytz.timezone('America/Mexico_City'))
     scheduler.add_job(
         actualizar_estatus_deudas,
@@ -63,6 +63,13 @@ if __name__ == '__main__':
         trigger='cron',
         hour=9, minute=0,
         id='enviar_referencias_diario'
+    )
+
+    scheduler.add_job(
+        procesar_respaldos_automaticos,
+        trigger='cron',
+        minute='*',
+        id='generar_respaldos_automaticos'
     )
     
     scheduler.start()

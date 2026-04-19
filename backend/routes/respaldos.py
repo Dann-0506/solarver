@@ -21,6 +21,26 @@ def _get_pg_env():
         env['PGPASSWORD'] = db_password
     return env
 
+def generar_archivo_respaldo(tipo="manual"):
+    """Esta función concentra la lógica de pg_dump. Puede ser llamada por la API o por el Scheduler."""
+    try:
+        nombre = f"solarver_backup_{tipo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+        path = os.path.join(BACKUP_DIR, nombre)
+        
+        host = os.getenv("DB_HOST", "localhost")
+        user = os.getenv("DB_USER", "postgres")
+        db   = os.getenv("DB_NAME", "SolarVer")
+        
+        comando = ['pg_dump', '-h', host, '-U', user, '-d', db, '--clean', '-f', path]
+        resultado = subprocess.run(comando, capture_output=True, text=True, env=_get_pg_env())
+        
+        if resultado.returncode != 0:
+            return False, resultado.stderr, None
+            
+        return True, "Respaldo generado", nombre
+    except Exception as e:
+        return False, str(e), None
+
 
 @respaldos_bp.route('/respaldos', methods=['GET'])
 def listar_respaldos():
@@ -47,27 +67,15 @@ def listar_respaldos():
 
 @respaldos_bp.route('/respaldos', methods=['POST'])
 def crear_respaldo():
-    try:
-        data = request.json or {}
-        tipo_str = "auto" if data.get('tipo') == 'auto' else "manual"
-        
-        # Inyectar el tipo en el nombre del archivo
-        nombre = f"solarver_backup_{tipo_str}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
-        path = os.path.join(BACKUP_DIR, nombre)
-        
-        host = os.getenv("DB_HOST", "localhost")
-        user = os.getenv("DB_USER", "postgres")
-        db   = os.getenv("DB_NAME", "SolarVer")
-        
-        comando = ['pg_dump', '-h', host, '-U', user, '-d', db, '--clean', '-f', path]
-        resultado = subprocess.run(comando, capture_output=True, text=True, env=_get_pg_env())
-        
-        if resultado.returncode != 0:
-            return jsonify({'success': False, 'message': resultado.stderr}), 500
-            
-        return jsonify({'success': True, 'message': 'Respaldo generado', 'archivo': nombre}), 201
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+    data = request.json or {}
+    tipo_str = "auto" if data.get('tipo') == 'auto' else "manual"
+    
+    exito, mensaje, archivo = generar_archivo_respaldo(tipo_str)
+    
+    if exito:
+        return jsonify({'success': True, 'message': mensaje, 'archivo': archivo}), 201
+    else:
+        return jsonify({'success': False, 'message': mensaje}), 500
 
 
 @respaldos_bp.route('/respaldos/descargar/<nombre>', methods=['GET'])
@@ -83,7 +91,7 @@ def eliminar_respaldo(nombre):
         return jsonify({'success': False, 'message': 'Archivo no encontrado'}), 404
         
     try:
-        os.remove(path) # 👈 Esto borra físicamente el archivo del disco
+        os.remove(path)
         return jsonify({'success': True, 'message': 'Respaldo eliminado correctamente.'}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500

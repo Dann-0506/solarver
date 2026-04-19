@@ -3,12 +3,17 @@
 
 from db import get_connection
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from .notificaciones_service import enviar_instrucciones_pago
+from routes.respaldos import generar_archivo_respaldo
 import random
 import string
 import psycopg2.extras
 import pytz
+import os
+import json
 
+load_dotenv()
 
 def actualizar_estatus_deudas(fecha_simulada=None):
     """
@@ -195,3 +200,45 @@ def procesar_cobros_automaticos(fecha_simulada=None):
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
+
+def procesar_respaldos_automaticos():
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    backup_dir = os.path.join(base_dir, 'backups')
+    config_path = os.path.join(backup_dir, 'config.json')
+
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+
+    config = {'frecuencia': 'diario', 'hora': '02:00'}
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as file:
+                config = json.load(file)
+        except:
+            pass
+
+    frecuencia = config.get('frecuencia', 'diario')
+    hora_config = config.get('hora', '02:00')
+    ahora = datetime.now()
+
+    if ahora.strftime('%H:%M') != hora_config:
+        return
+
+    if frecuencia == 'semanal' and ahora.weekday() != 6:
+        return
+    if frecuencia == 'mensual' and ahora.day != 1:
+        return
+
+    prefijo_hoy = f"solarver_backup_auto_{ahora.strftime('%Y%m%d')}"
+    for archivo in os.listdir(backup_dir):
+        if archivo.startswith(prefijo_hoy):
+            return
+
+    print(f"[{ahora.strftime('%Y-%m-%d %H:%M:%S')}] Notificando al sistema para generar respaldo ({frecuencia})...")
+    
+    exito, mensaje, archivo = generar_archivo_respaldo('auto')
+    
+    if exito:
+        print(f"El sistema confirmó la creación del respaldo: {archivo}")
+    else:
+        print(f"El sistema falló al crear el respaldo: {mensaje}")
