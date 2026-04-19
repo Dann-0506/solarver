@@ -75,6 +75,19 @@ def descargar_respaldo(nombre):
     path = os.path.join(BACKUP_DIR, nombre)
     return send_file(path, as_attachment=True)
 
+@respaldos_bp.route('/respaldos/<nombre>', methods=['DELETE'])
+def eliminar_respaldo(nombre):
+    path = os.path.join(BACKUP_DIR, nombre)
+    
+    if not os.path.exists(path):
+        return jsonify({'success': False, 'message': 'Archivo no encontrado'}), 404
+        
+    try:
+        os.remove(path) # 👈 Esto borra físicamente el archivo del disco
+        return jsonify({'success': True, 'message': 'Respaldo eliminado correctamente.'}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @respaldos_bp.route('/respaldos/config', methods=['GET', 'POST'])
 def config_respaldos():
     config_path = os.path.join(BACKUP_DIR, 'config.json')

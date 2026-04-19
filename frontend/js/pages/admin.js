@@ -24,7 +24,7 @@ import { cargarClientesRec, seleccionarTodosRec,
 import { mostrarSubreporte, descargarReporte, actualizarVistaReporte } from '../modules/reportes.js';
 import { cargarHistorial } from '../modules/historial.js';
 import { inicializarPerfil } from '../modules/perfil.js';
-import { cargarRespaldos, crearRespaldo, confirmarRestauracion, descargarRespaldo, abrirConfigRespaldos, cerrarConfigRespaldos, guardarConfigRespaldos } from '../modules/respaldos.js';
+import { cargarRespaldos, crearRespaldo, confirmarRestauracion, descargarRespaldo, abrirConfigRespaldos, cerrarConfigRespaldos, guardarConfigRespaldos, confirmarEliminarRespaldo } from '../modules/respaldos.js';
 
 const TABS = ['dashboard','clientes','pagos','conciliaciones','notificaciones','usuarios','historial','reportes','respaldos','perfil'];
 
@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.abrirConfigRespaldos       = abrirConfigRespaldos;
     window.cerrarConfigRespaldos      = cerrarConfigRespaldos;
     window.guardarConfigRespaldos     = guardarConfigRespaldos;
+    window.confirmarEliminarRespaldo  = confirmarEliminarRespaldo;
 });
 
 function showTab(name) {
