@@ -12,7 +12,6 @@ export function inicializarPerfil() {
 
     document.getElementById('nombrePerfil').value = usuario.nombre || '';
     document.getElementById('usernamePerfil').value = usuario.username || '';
-    document.getElementById('correoPerfil').value = usuario.correo || '';
 
     if (usuario.foto) {
         const urlFoto = usuario.foto.startsWith('http') ? usuario.foto : `${API_BASE_URL}${usuario.foto}`;

@@ -99,7 +99,9 @@ function actualizarAvatar() {
     const initalsEl = document.getElementById('sidebarInitials');
 
     if (usuario && usuario.foto) {
-        initalsEl.innerHTML = `<img src="${usuario.foto}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        const rutaLimpia = usuario.foto.startsWith('/') ? usuario.foto.substring(1) : usuario.foto;
+        const urlFoto = usuario.foto.startsWith('http') ? usuario.foto : `${API_BASE_URL}/${rutaLimpia}`;
+        initalsEl.innerHTML = `<img src="${urlFoto}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
         initalsEl.style.backgroundColor = 'transparent';
     } else if (usuario) {
         initalsEl.textContent = getIniciales(usuario.nombre);
