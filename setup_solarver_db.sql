@@ -34,7 +34,7 @@ CREATE TABLE "USUARIO" (
     "Foto_Perfil"       VARCHAR(255),
 
     CONSTRAINT "Chk_Intentos_Fallidos"
-        CHECK ("Intentos_Fallidos" BETWEEN 0 AND 3),
+        CHECK ("Intentos_Fallidos" BETWEEN 0 AND 3)
 );
 
 CREATE TABLE "CLIENTE" (
