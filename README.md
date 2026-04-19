@@ -60,5 +60,5 @@ Para revisar y hacer funcionar este proyecto, sigue estos pasos:
     python app.py
 
 7. **Probar la aplicación:**
-    Abre el navegador y visita **http://localhost:5000** (o el puuerto que indique la terminal).
+    Abre el navegador y visita **http://localhost:5000** (o el puerto que indique la terminal).
     
