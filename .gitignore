@@ -18,3 +18,6 @@ __pycache__/
 
 # Archivos de imagenes de perfil
 backend/static/uploads/profiles/
+
+# Archivos de respaldos de base de datos
+backend/backups/

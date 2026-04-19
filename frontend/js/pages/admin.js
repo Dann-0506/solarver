@@ -24,6 +24,7 @@ import { cargarClientesRec, seleccionarTodosRec,
 import { mostrarSubreporte, descargarReporte, actualizarVistaReporte } from '../modules/reportes.js';
 import { cargarHistorial } from '../modules/historial.js';
 import { inicializarPerfil } from '../modules/perfil.js';
+import { cargarRespaldos, crearRespaldo, confirmarRestauracion, descargarRespaldo, abrirConfigRespaldos, cerrarConfigRespaldos, guardarConfigRespaldos, confirmarEliminarRespaldo } from '../modules/respaldos.js';
 
 const TABS = ['dashboard','clientes','pagos','conciliaciones','notificaciones','usuarios','historial','reportes','respaldos','perfil'];
 
@@ -93,6 +94,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.cargarHistorial            = cargarHistorial;
     window.cerrarSesion               = cerrarSesion;
     window.actualizarAvatarSidebar    = actualizarAvatar;
+    window.crearRespaldo              = crearRespaldo;
+    window.confirmarRestauracion      = confirmarRestauracion;
+    window.descargarRespaldo          = descargarRespaldo;
+    window.abrirConfigRespaldos       = abrirConfigRespaldos;
+    window.cerrarConfigRespaldos      = cerrarConfigRespaldos;
+    window.guardarConfigRespaldos     = guardarConfigRespaldos;
+    window.confirmarEliminarRespaldo  = confirmarEliminarRespaldo;
 });
 
 function showTab(name) {
@@ -111,6 +119,7 @@ function showTab(name) {
     if (name === 'usuarios')       cargarUsuarios();
     if (name === 'historial')      cargarHistorial();
     if (name === 'reportes')       {mostrarSubreporte('faltan'); actualizarVistaReporte();}
+    if (name === 'respaldos')       cargarRespaldos();
     if (name === 'perfil')         inicializarPerfil();
 }
 
@@ -137,10 +146,13 @@ function actualizarAvatar() {
     if (usuario && usuario.foto) {
         const rutaLimpia = usuario.foto.startsWith('/') ? usuario.foto.substring(1) : usuario.foto;
         const urlFoto = usuario.foto.startsWith('http') ? usuario.foto : `${API_BASE_URL}/${rutaLimpia}`;
-        initalsEl.innerHTML = `<img src="${urlFoto}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+
+        initalsEl.innerHTML = `<img src="${urlFoto}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" onerror="this.parentElement.innerHTML='${getIniciales(usuario.nombre)}';this.parentElement.style.padding='';">`;
         initalsEl.style.backgroundColor = 'transparent';
+        initalsEl.style.padding = '0';
     } else if (usuario) {
         initalsEl.textContent = getIniciales(usuario.nombre);
         initalsEl.style.background = '';
+        initalsEl.style.padding = '';
     }
 }

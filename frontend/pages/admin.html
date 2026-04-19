@@ -216,18 +216,26 @@
     <div id="tab-respaldos" class="tab-content" style="display:none">
       <div class="section-header">
         <h3>Gestión de respaldos</h3>
-        <button class="btn-primary">↻ Ejecutar respaldo ahora</button>
+        <button class="btn-primary" onclick="crearRespaldo()">Crear Respaldo de Seguridad</button>
       </div>
       <div class="backup-card">
         <div class="backup-row">
-          <div class="backup-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg></div>
-          <div class="backup-info"><div class="title">Respaldo automático diario</div><div class="sub">Programado · 02:00 AM · Próximo: mañana</div></div>
-          <div style="margin-left:auto;display:flex;align-items:center;gap:12px"><span class="badge-status status-activo">Activo</span><button class="btn-secondary" style="font-size:.78rem">Configurar</button></div>
+          <div class="backup-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+          </div>
+          <div class="backup-info">
+            <div class="title" id="configVistaTitulo">Cargando configuración...</div>
+            <div class="sub" id="configVistaSub">Consultando servidor</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+            <span class="badge-status status-activo">Activo</span>
+            <button class="btn-secondary" style="font-size:.78rem" onclick="window.abrirConfigRespaldos()">Configurar</button>
+          </div>
         </div>
         <div style="margin:18px 0 10px;font-family:'Sora',sans-serif;font-size:.88rem;font-weight:700;color:var(--text)">Historial de respaldos</div>
         <table>
-          <thead><tr><th>Archivo</th><th>Tipo</th><th>Fecha creación</th><th>Tamaño</th><th>Estado</th></tr></thead>
-          <tbody id="respaldosTableBody">
+          <thead><tr><th>Archivo</th><th>Tipo</th><th>Fecha creación</th><th>Tamaño</th><th>Acciones</th></tr></thead>
+          <tbody id="tablaRespaldosBody">
             <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted);font-style:italic">Sin respaldos registrados.</td></tr>
           </tbody>
         </table>
@@ -294,6 +302,36 @@
     <div class="modal-footer">
       <button class="btn-secondary" onclick="cerrarEditarModal()">Cancelar</button>
       <button class="btn-primary" id="btnGuardarEdicion" onclick="guardarEdicion()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="configRespaldoModal" style="display:none;">
+  <div class="modal" style="max-width: 400px;">
+    <button class="modal-close" onclick="window.cerrarConfigRespaldos()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h3>Respaldos Automáticos</h3>
+    <p class="sub">Configura cuándo quieres que el sistema guarde una copia de seguridad.</p>
+    
+    <div class="form-grid" style="grid-template-columns: 1fr; gap: 14px; margin-top: 20px;">
+      <div class="form-group">
+        <label>Frecuencia</label>
+        <select id="rFrecuencia">
+          <option value="diario">Diario</option>
+          <option value="semanal">Semanal (Domingos)</option>
+          <option value="mensual">Mensual (Día 1)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Hora de ejecución</label>
+        <input type="time" id="rHora" value="02:00">
+      </div>
+    </div>
+    
+    <div class="modal-footer" style="margin-top: 20px;">
+      <button class="btn-secondary" onclick="window.cerrarConfigRespaldos()">Cancelar</button>
+      <button class="btn-primary" id="btnGuardarConfig" onclick="window.guardarConfigRespaldos()">Guardar</button>
     </div>
   </div>
 </div>
