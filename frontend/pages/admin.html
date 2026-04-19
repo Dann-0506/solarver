@@ -161,52 +161,52 @@
     </div>
 
     <div id="tab-reportes" class="tab-content" style="display:none">
-  <div class="section-header" style="margin-bottom:24px">
-    <h3>Generación de Reportes</h3>
-  </div>
-  <div style="display:flex; gap:15px; background:white; padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:20px; align-items:flex-end;">
-    <div class="form-group" style="margin:0; flex:1">
-      <label style="font-size:.8rem; font-weight:600; color:var(--muted); margin-bottom:6px; display:block">Seleccionar Categoría</label>
-      <select id="selTipoReporte" onchange="actualizarVistaReporte()" style="width:100%; padding:10px; border-radius:8px; border:1.5px solid var(--border); font-family:'Sora',sans-serif;">
-        <optgroup label="Reportes de Cartera">
-          <option value="integral">Reporte Integral</option>
-          <option value="pendiente">Solo Pagos Pendientes</option>
-          <option value="atrasado">Solo Pagos Atrasados</option>
-        </optgroup>
-        <optgroup label="Reportes de Ingresos">
-          <option value="realizados">Pagos Realizados</option>
-        </optgroup>
-      </select>
+      <div class="section-header" style="margin-bottom:24px">
+        <h3>Generación de Reportes</h3>
+      </div>
+      <div style="display:flex; gap:15px; background:white; padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:20px; align-items:flex-end;">
+        <div class="form-group" style="margin:0; flex:1">
+          <label style="font-size:.8rem; font-weight:600; color:var(--muted); margin-bottom:6px; display:block">Seleccionar Categoría</label>
+          <select id="selTipoReporte" onchange="actualizarVistaReporte()" style="width:100%; padding:10px; border-radius:8px; border:1.5px solid var(--border); font-family:'Sora',sans-serif;">
+            <optgroup label="Reportes de Cartera">
+              <option value="integral">Reporte Integral</option>
+              <option value="pendiente">Solo Pagos Pendientes</option>
+              <option value="atrasado">Solo Pagos Atrasados</option>
+            </optgroup>
+            <optgroup label="Reportes de Ingresos">
+              <option value="realizados">Pagos Realizados</option>
+            </optgroup>
+          </select>
+        </div>
+        <div style="display:flex; gap:10px">
+          <button onclick="enviarEstadosDeCuenta()" class="btn-primary" style="background:#2980B9; border:none; box-shadow:0 4px 12px rgba(41,128,185,0.2)">
+            Enviar por Correo
+          </button>
+          <button onclick="descargarReporte('pdf')" class="btn-primary" style="background:#E74C3C; border:none;">Exportar PDF</button>
+          <button onclick="descargarReporte('excel')" class="btn-primary" style="background:#27AE60; border:none;">Exportar Excel</button>
+        </div>
+      </div>
+      <div id="reporteResumen" style="display:flex; gap:14px; margin-bottom:20px"></div>
+      <div style="background:white; border-radius:14px; border:1px solid var(--border); overflow:hidden">
+        <div style="padding:16px 20px; border-bottom:1px solid var(--border)">
+          <span id="reporteTitulo" style="font-family:'Sora',sans-serif; font-weight:700; font-size:.95rem">Vista Previa de Cobranza</span>
+        </div>
+        <table style="width:100%; border-collapse:collapse">
+          <thead id="reporteTableHead">
+            <tr style="background:var(--bg)">
+              <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Cliente</th>
+              <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Día Pago</th>
+              <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Saldo Pendiente</th>
+              <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Intereses</th>
+              <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Estatus</th>
+            </tr>
+          </thead>
+          <tbody id="reporteTableBody">
+            <tr><td colspan="5" style="text-align:center; padding:32px; color:var(--muted)">Cargado...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div style="display:flex; gap:10px">
-      <button onclick="enviarEstadosDeCuenta()" class="btn-primary" style="background:#2980B9; border:none; box-shadow:0 4px 12px rgba(41,128,185,0.2)">
-        Enviar por Correo
-      </button>
-      <button onclick="descargarReporte('pdf')" class="btn-primary" style="background:#E74C3C; border:none;">Exportar PDF</button>
-      <button onclick="descargarReporte('excel')" class="btn-primary" style="background:#27AE60; border:none;">Exportar Excel</button>
-    </div>
-  </div>
-  <div id="reporteResumen" style="display:flex; gap:14px; margin-bottom:20px"></div>
-  <div style="background:white; border-radius:14px; border:1px solid var(--border); overflow:hidden">
-    <div style="padding:16px 20px; border-bottom:1px solid var(--border)">
-      <span id="reporteTitulo" style="font-family:'Sora',sans-serif; font-weight:700; font-size:.95rem">Vista Previa de Cobranza</span>
-    </div>
-    <table style="width:100%; border-collapse:collapse">
-      <thead id="reporteTableHead">
-        <tr style="background:var(--bg)">
-          <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Cliente</th>
-          <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Día Pago</th>
-          <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Saldo Pendiente</th>
-          <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Intereses</th>
-          <th style="padding:12px 16px; text-align:left; font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Estatus</th>
-        </tr>
-      </thead>
-      <tbody id="reporteTableBody">
-        <tr><td colspan="5" style="text-align:center; padding:32px; color:var(--muted)">Cargado...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
 
     <div id="tab-respaldos" class="tab-content" style="display:none">
       <div class="section-header">
