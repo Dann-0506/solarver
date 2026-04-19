@@ -24,6 +24,7 @@ import { cargarClientesRec, seleccionarTodosRec,
 import { mostrarSubreporte, descargarReporte, actualizarVistaReporte } from '../modules/reportes.js';
 import { cargarHistorial } from '../modules/historial.js';
 import { inicializarPerfil } from '../modules/perfil.js';
+import { cargarRespaldos, crearRespaldo, confirmarRestauracion, descargarRespaldo } from '../modules/respaldos.js';
 
 const TABS = ['dashboard','clientes','pagos','conciliaciones','notificaciones','usuarios','historial','reportes','respaldos','perfil'];
 
@@ -93,6 +94,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.cargarHistorial            = cargarHistorial;
     window.cerrarSesion               = cerrarSesion;
     window.actualizarAvatarSidebar    = actualizarAvatar;
+    window.crearRespaldo              = crearRespaldo;
+    window.confirmarRestauracion      = confirmarRestauracion;
+    window.descargarRespaldo          = descargarRespaldo;
 });
 
 function showTab(name) {
@@ -111,6 +115,7 @@ function showTab(name) {
     if (name === 'usuarios')       cargarUsuarios();
     if (name === 'historial')      cargarHistorial();
     if (name === 'reportes')       {mostrarSubreporte('faltan'); actualizarVistaReporte();}
+    if (name === 'respaldos')       cargarRespaldos();
     if (name === 'perfil')         inicializarPerfil();
 }
 

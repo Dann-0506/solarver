@@ -216,7 +216,7 @@
     <div id="tab-respaldos" class="tab-content" style="display:none">
       <div class="section-header">
         <h3>Gestión de respaldos</h3>
-        <button class="btn-primary">↻ Ejecutar respaldo ahora</button>
+        <button class="btn-primary" onclick="crearRespaldo()">Crear Respaldo de Seguridad</button>
       </div>
       <div class="backup-card">
         <div class="backup-row">
@@ -227,7 +227,7 @@
         <div style="margin:18px 0 10px;font-family:'Sora',sans-serif;font-size:.88rem;font-weight:700;color:var(--text)">Historial de respaldos</div>
         <table>
           <thead><tr><th>Archivo</th><th>Tipo</th><th>Fecha creación</th><th>Tamaño</th><th>Estado</th></tr></thead>
-          <tbody id="respaldosTableBody">
+          <tbody id="tablaRespaldosBody">
             <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted);font-style:italic">Sin respaldos registrados.</td></tr>
           </tbody>
         </table>
