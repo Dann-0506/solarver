@@ -19,6 +19,8 @@ from routes.webhooks        import webhooks_bp
 
 app = Flask(__name__)
 
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+
 CORS(app, resources={r"/api/*": {
     "origins": "*",
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
