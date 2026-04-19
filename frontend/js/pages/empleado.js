@@ -17,8 +17,10 @@ import { cargarPagos, abrirModalPago, cerrarModalPago, cerrarComprobante,
          filtrarClientesPago, verificarMonto, guardarPago } from '../modules/pagos.js';
 import { cargarClientesRec, seleccionarTodosRec,
          enviarRecordatorios, cargarHistorialRec } from '../modules/recordatorios.js';
+import { inicializarPerfil } from '../modules/perfil.js';
+import { act } from 'react';
 
-const TABS = ['dashboard', 'clientes', 'pagos', 'notificaciones'];
+const TABS = ['dashboard', 'clientes', 'pagos', 'notificaciones', 'perfil'];
 
 document.addEventListener('DOMContentLoaded', async () => {
 
@@ -31,6 +33,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 2. Sidebar
     document.getElementById('sidebarNombre').textContent   = usuario.nombre;
     document.getElementById('sidebarInitials').textContent = getIniciales(usuario.nombre);
+
+    actualizarAvatar();
 
     // 3. Logout
     document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
@@ -72,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.enviarRecordatorios       = enviarRecordatorios;
     window.cargarHistorialRec        = cargarHistorialRec;
     window.cerrarSesion              = cerrarSesion;
+    window.actualizarAvatarSidebar   = actualizarAvatar;
 });
 
 function showTab(name) {
@@ -86,6 +91,7 @@ function showTab(name) {
     if (name === 'clientes')       { cargarClientes(); cargarStats(); }
     if (name === 'pagos')          cargarPagos('pagosTableBody', 'pagosInfo', 'pagosBtns');
     if (name === 'notificaciones') { cargarClientesRec(); cargarHistorialRec(); }
+    if (name === 'perfil')         inicializarPerfil();
 }
 
 function actualizarAvatar() {

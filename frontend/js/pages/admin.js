@@ -23,8 +23,9 @@ import { cargarClientesRec, seleccionarTodosRec,
          enviarRecordatorios, cargarHistorialRec } from '../modules/recordatorios.js';
 import { mostrarSubreporte, descargarReporte, actualizarVistaReporte } from '../modules/reportes.js';
 import { cargarHistorial } from '../modules/historial.js';
+import { inicializarPerfil } from '../modules/perfil.js';
 
-const TABS = ['dashboard','clientes','pagos','conciliaciones','notificaciones','usuarios','historial','reportes','respaldos'];
+const TABS = ['dashboard','clientes','pagos','conciliaciones','notificaciones','usuarios','historial','reportes','respaldos','perfil'];
 
 document.addEventListener('DOMContentLoaded', async () => {
 
@@ -37,6 +38,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 2. Rellenar sidebar
     document.getElementById('sidebarNombre').textContent   = usuario.nombre;
     document.getElementById('sidebarInitials').textContent = getIniciales(usuario.nombre);
+
+    actualizarAvatar();
 
     // 3. Logout
     document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
@@ -89,6 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.actualizarVistaReporte     = actualizarVistaReporte;
     window.cargarHistorial            = cargarHistorial;
     window.cerrarSesion               = cerrarSesion;
+    window.actualizarAvatarSidebar    = actualizarAvatar;
 });
 
 function showTab(name) {
@@ -100,13 +104,14 @@ function showTab(name) {
         item.classList.toggle('active', item.getAttribute('data-tab') === name)
     );
     if (name === 'dashboard')       {cargarListasDashboard(); cargarStatsDashboard();}
-    if (name === 'clientes')       { cargarClientes(); cargarStats();}
+    if (name === 'clientes')       {cargarClientes(); cargarStats();}
     if (name === 'pagos')          cargarPagos('pagosTableBody', 'pagosInfo', 'pagosBtns');
     if (name === 'conciliaciones') cargarConciliaciones();
-    if (name === 'notificaciones') { cargarClientesRec(); cargarHistorialRec(); }
+    if (name === 'notificaciones') {cargarClientesRec(); cargarHistorialRec(); }
     if (name === 'usuarios')       cargarUsuarios();
     if (name === 'historial')      cargarHistorial();
     if (name === 'reportes')       {mostrarSubreporte('faltan'); actualizarVistaReporte();}
+    if (name === 'perfil')         inicializarPerfil();
 }
 
 async function verificarSesion() {
