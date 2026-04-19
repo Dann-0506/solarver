@@ -1,0 +1,74 @@
+<div class="section-header">
+    <div>
+        <h3>Mi Perfil</h3>
+        <p style="color: var(--muted); font-size: 0.85rem; margin-top: 4px;">Gestiona tu información personal y seguridad.</p>
+    </div>
+</div>
+
+<div class="perfil-layout" style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+    
+    <div class="card">
+        <div class="card-header">
+            <h4>Datos Personales</h4>
+        </div>
+        <div class="card-body">
+            <form id="formDatosPerfil" style="display: flex; flex-direction: column; gap: 20px;">
+                
+                <div style="display: flex; align-items: center; gap: 24px; padding-bottom: 10px;">
+                    <div id="previewAvatarContainer" style="width: 90px; height: 90px; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px dashed var(--border); flex-shrink: 0;">
+                        <span id="avatarPlaceholder" style="color: var(--muted); font-size: 0.75rem;">Sin foto</span>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                        <label>Foto de Perfil</label>
+                        <input type="file" id="fotoPerfilInput" accept=".jpg, .jpeg, .png" style="padding: 8px 0; background: transparent; border: none;">
+                        <p style="font-size: 0.7rem; color: var(--muted);">Recomendado: Cuadrada, JPG o PNG (Máx. 5MB).</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Nombre Completo *</label>
+                        <input type="text" id="nombrePerfil" placeholder="Tu nombre" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre de Usuario *</label>
+                        <input type="text" id="usernamePerfil" placeholder="usuario123" required>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                    <button type="submit" class="btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card" style="border-top: 3px solid var(--blue);">
+        <div class="card-header">
+            <h4>Seguridad y Contraseña</h4>
+        </div>
+        <div class="card-body">
+            <form id="formPasswordPerfil" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="form-group">
+                    <label>Contraseña Actual</label>
+                    <input type="password" id="passwordActual" placeholder="••••••••" required>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Nueva Contraseña</label>
+                        <input type="password" id="passwordNueva" placeholder="Mín. 8 caracteres" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirmar Nueva Contraseña</label>
+                        <input type="password" id="passwordConfirmar" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                    <button type="submit" class="btn-blue" style="background: var(--text);">Actualizar Contraseña</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

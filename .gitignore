@@ -15,3 +15,6 @@ __pycache__/
 # Archivos propios del sistema operativo o editores de código
 .vscode/
 .DS_Store
+
+# Archivos de imagenes de perfil
+backend/static/uploads/profiles/

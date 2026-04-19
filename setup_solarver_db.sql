@@ -4,13 +4,15 @@
 -- ═══════════════════════════════════════════════════════════
 
 -- 1. Crear la base de datos
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'SolarVer';
+DROP DATABASE IF EXISTS "SolarVer";
 CREATE DATABASE "SolarVer";
 
 -- ── Conectarse a la BD antes de continuar ──
 \c SolarVer;
 
 -- ═══════════════════════════════════════════════════════════
---  2. TABLAS (en orden correcto de dependencias)
+--  2. TABLAS 
 -- ═══════════════════════════════════════════════════════════
 
 CREATE TABLE "ROL" (
@@ -29,15 +31,10 @@ CREATE TABLE "USUARIO" (
     "Intentos_Fallidos" INTEGER      DEFAULT 0,
     "Fecha_Bloqueo"     TIMESTAMP,
     "Id_Rol"            INTEGER,
+    "Foto_Perfil"       VARCHAR(255),
 
     CONSTRAINT "Chk_Intentos_Fallidos"
-        CHECK ("Intentos_Fallidos" BETWEEN 0 AND 3),
-
-    CONSTRAINT "Fk_Usuario_Rol"
-        FOREIGN KEY ("Id_Rol")
-        REFERENCES "ROL"("Id_Rol")
-        ON DELETE SET NULL
-        ON UPDATE CASCADE
+        CHECK ("Intentos_Fallidos" BETWEEN 0 AND 3)
 );
 
 CREATE TABLE "CLIENTE" (
@@ -106,8 +103,15 @@ CREATE TABLE "RECORDATORIO" (
 CREATE SEQUENCE folio_seq START 500000;
 
 -- ═══════════════════════════════════════════════════════════
---  3. RELACIONES (Foreign Keys con comportamiento explícito)
+--  3. RELACIONES
 -- ═══════════════════════════════════════════════════════════
+
+ALTER TABLE "USUARIO"
+    ADD CONSTRAINT "Fk_Usuario_Rol"
+    FOREIGN KEY ("Id_Rol")
+    REFERENCES "ROL"("Id_Rol")
+    ON DELETE SET NULL
+    ON UPDATE CASCADE;
 
 ALTER TABLE "DEUDA"
     ADD CONSTRAINT "Fk_Deuda_Cliente"
@@ -178,7 +182,6 @@ INSERT INTO "CLIENTE" ("Nombre_Completo", "Identificacion", "Correo", "Telefono"
     ('Ana López Sánchez',    'LOSA920215MVR002', 'ana.lopez@email.com',        '2291100002', 'Av. Insurgentes 45, Boca del Río', 17, 'Activo'),
     ('Roberto Silva Díaz',   'SIDR780320HVR003', 'roberto.silva@email.com',    '2291100003', 'Calle Juárez 88, Veracruz',       5,  'Activo'),
     ('María García Torres',  'GATM950710MVR004', 'maria.garcia@email.com',     '2291100004', 'Blvd. Manuel Ávila 22, Veracruz', 17, 'Activo'),
-    ('Luis Ramírez Vega',    'RAVL881005HVR005', 'luis.ramirez@email.com',     '2291100005', 'Calle Zaragoza 5, Veracruz',      5,  'Activo'),
     ('Daniel Landero Arias', 'FOCP010317MVR006', 'dlandero2005@gmail.com',  '522291294878', 'Av. 20 de Noviembre 34, Veracruz',17, 'Activo');
 
 -- Deudas iniciales (Añadido Plazo_Meses e Interes_Acumulado)
@@ -187,8 +190,7 @@ INSERT INTO "DEUDA" ("Id_Cliente", "Monto_Total", "Saldo_Pendiente", "Estatus", 
     (2,  8500.00,  8500.00, 'atrasado',  CURRENT_DATE - INTERVAL '20 days', 6, 0.00, NULL),
     (3, 12000.00,     0.00, 'pagado',    CURRENT_DATE, 12, 0.00, NULL),
     (4,  9800.00,  4900.00, 'pendiente', CURRENT_DATE, 24, 0.00, NULL),
-    (5, 11000.00, 11000.00, 'atrasado',  CURRENT_DATE - INTERVAL '5 days', 18, 0.00, NULL),
-    (6,  7500.00,  7500.00, 'pendiente', CURRENT_DATE, 12, 0.00, NULL);
+    (5, 11000.00, 11000.00, 'atrasado',  CURRENT_DATE - INTERVAL '5 days', 18, 0.00, NULL);
 
 -- Pagos de prueba
 INSERT INTO "PAGO" ("Id_Deuda", "Monto", "Fecha_Pago", "Metodo_Pago", "Folio", "Estado") VALUES

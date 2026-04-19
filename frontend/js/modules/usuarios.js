@@ -43,13 +43,25 @@ export async function cargarUsuarios() {
 
         const usuarioActual = getUsuario();
         tbody.innerHTML = data.usuarios.map(u => {
-            const ini   = getIniciales(u.Nombre);
+            const ini = getIniciales(u.Nombre);
             const esAdm = u.Nombre_Rol.toLowerCase().includes('admin');
-            const esYo  = u.Username === usuarioActual?.username;
-            const color = esAdm ? 'background:linear-gradient(135deg,var(--orange),var(--orange-d))' : '';
+            const esYo = u.Username === usuarioActual?.username;
+            const colorBg = esAdm ? 'background:linear-gradient(135deg,var(--orange),var(--orange-d))' : '';
+
+            let avatarHtml = ini;
+            let avatarStyle = colorBg;
+
+            if (u.Foto_Perfil) {
+                const rutaLimpia = u.Foto_Perfil.startsWith('/') ? u.Foto_Perfil.substring(1) : u.Foto_Perfil;
+                const urlCompleta = `${API_BASE_URL}/${rutaLimpia}`;
+                
+                avatarHtml = `<img src="${urlCompleta}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" onerror="this.parentElement.innerHTML='${ini}';this.parentElement.style.background='${colorBg}'">`;
+                avatarStyle = 'background:transparent; padding:0;';
+            }
+
             return `<tr>
               <td><div style="display:flex;align-items:center;gap:10px">
-                <div class="pay-av" style="${color}">${ini}</div>
+                <div class="pay-av" style="${avatarStyle}">${avatarHtml}</div>
                 <div>
                   <div style="font-weight:600">${u.Nombre}${esYo ? ' <span style="font-size:.7rem;background:rgba(30,133,200,0.1);color:var(--blue);padding:1px 6px;border-radius:4px">Tú</span>' : ''}</div>
                   <div style="font-size:.74rem;color:var(--muted)">@${u.Username}</div>

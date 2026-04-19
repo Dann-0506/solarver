@@ -25,3 +25,13 @@ export function esAdmin() {
     const u = getUsuario();
     return u && u.rol && u.rol.toLowerCase().includes('admin'); // Verifica si el usuario tiene el rol de admin
 }
+
+export function actualizarDatosSesion(nuevosDatos) {
+    const usuario = getUsuario();
+    if (usuario) {
+        const usuarioActualizado = { ...usuario, ...nuevosDatos };
+        guardarUsuario(usuarioActualizado);
+        return usuarioActualizado; // Devuelve el usuario actualizado después de guardar los nuevos datos en sesión
+    }
+    return null; // Devuelve null si no hay un usuario en sesión para actualizar
+}

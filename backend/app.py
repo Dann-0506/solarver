@@ -19,6 +19,8 @@ from routes.webhooks        import webhooks_bp
 
 app = Flask(__name__)
 
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+
 CORS(app, resources={r"/api/*": {
     "origins": "*",
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -66,4 +68,4 @@ if __name__ == '__main__':
 
     actualizar_estatus_deudas()
 
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)

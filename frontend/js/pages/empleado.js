@@ -17,8 +17,10 @@ import { cargarPagos, abrirModalPago, cerrarModalPago, cerrarComprobante,
          filtrarClientesPago, verificarMonto, guardarPago } from '../modules/pagos.js';
 import { cargarClientesRec, seleccionarTodosRec,
          enviarRecordatorios, cargarHistorialRec } from '../modules/recordatorios.js';
+import { inicializarPerfil } from '../modules/perfil.js';
+import { act } from 'react';
 
-const TABS = ['dashboard', 'clientes', 'pagos', 'notificaciones'];
+const TABS = ['dashboard', 'clientes', 'pagos', 'notificaciones', 'perfil'];
 
 document.addEventListener('DOMContentLoaded', async () => {
 
@@ -31,6 +33,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 2. Sidebar
     document.getElementById('sidebarNombre').textContent   = usuario.nombre;
     document.getElementById('sidebarInitials').textContent = getIniciales(usuario.nombre);
+
+    actualizarAvatar();
 
     // 3. Logout
     document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
@@ -72,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.enviarRecordatorios       = enviarRecordatorios;
     window.cargarHistorialRec        = cargarHistorialRec;
     window.cerrarSesion              = cerrarSesion;
+    window.actualizarAvatarSidebar   = actualizarAvatar;
 });
 
 function showTab(name) {
@@ -86,4 +91,20 @@ function showTab(name) {
     if (name === 'clientes')       { cargarClientes(); cargarStats(); }
     if (name === 'pagos')          cargarPagos('pagosTableBody', 'pagosInfo', 'pagosBtns');
     if (name === 'notificaciones') { cargarClientesRec(); cargarHistorialRec(); }
+    if (name === 'perfil')         inicializarPerfil();
+}
+
+function actualizarAvatar() {
+    const usuario = getUsuario();
+    const initalsEl = document.getElementById('sidebarInitials');
+
+    if (usuario && usuario.foto) {
+        const rutaLimpia = usuario.foto.startsWith('/') ? usuario.foto.substring(1) : usuario.foto;
+        const urlFoto = usuario.foto.startsWith('http') ? usuario.foto : `${API_BASE_URL}/${rutaLimpia}`;
+        initalsEl.innerHTML = `<img src="${urlFoto}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        initalsEl.style.backgroundColor = 'transparent';
+    } else if (usuario) {
+        initalsEl.textContent = getIniciales(usuario.nombre);
+        initalsEl.style.background = '';
+    }
 }
