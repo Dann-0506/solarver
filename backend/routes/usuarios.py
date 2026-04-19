@@ -1,13 +1,17 @@
 # Archivo: backend/routes/usuarios.py
 # Rutas para gestión de usuarios y roles.
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from db import get_connection
 import psycopg2.extras
 import bcrypt
+import os
 from services.validators_service import validar_correo
+from werkzeug.utils import secure_filename
 
 usuarios_bp = Blueprint('usuarios', __name__)
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 # ── GET /api/usuarios ──────────────────────────────────────
 @usuarios_bp.route('/usuarios', methods=['GET'])
@@ -157,6 +161,68 @@ def gestionar_usuario(id_usuario):
             """, (nombre, username, correo, id_rol, id_usuario))
         conn.commit()
         return jsonify({ 'success': True, 'message': 'Usuario actualizado correctamente.' }), 200
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({ 'success': False, 'message': str(e) }), 500
+    finally:
+        if cursor: cursor.close()
+        if conn:   conn.close()
+
+# Función auxiliar para validar extensiones de archivos
+def archivo_permitido(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# ── PUT /api/usuarios/perfil/<id> ─────────────────────────────
+@usuarios_bp.route('/usuarios/perfil/<int:id_usuario>', methods=['PUT'])
+def actualizar_perfil(id_usuario):
+    nombre  = request.form.get('nombre', '').strip()
+    username = request.form.get('username', '').strip()
+
+    if not nombre or not username:
+        return jsonify({ 'success': False, 'message': 'Nombre y username son obligatorios.' }), 400
+    
+    conn = cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        if 'foto' in request.files:
+            file = request.files['foto']
+            if file and archivo_permitido(file.filename):
+                ext = file.filename.rsplit('.', 1)[1].lower()
+                filename = secure_filename(f'perfil_{id_usuario}.{ext}')
+
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'profiles')
+                if not os.path.exists(upload_folder):
+                    os.makedirs(upload_folder)
+
+                path_completo = os.path.join(upload_folder, filename)
+                file.save(path_completo)
+
+                foto_url = f'/static/uploads/profiles/{filename}'
+
+        
+        query = 'UPDATE "USUARIO" SET "Nombre"=%s, "Username"=%s'
+        params = [nombre, username]
+
+        if foto_url:
+            query += ', "Foto_Perfil"=%s'
+            params.append(foto_url)
+
+        query += ' WHERE "Id_Usuario"=%s'
+        params.append(id_usuario)
+
+        cursor.execute(query, tuple(params))
+        conn.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Perfil actualizado correctamente.',
+            'usuario': {
+                'nombre': nombre,
+                'username': username,
+                'foto': foto_url
+            }
+        }), 200
     except Exception as e:
         if conn: conn.rollback()
         return jsonify({ 'success': False, 'message': str(e) }), 500
