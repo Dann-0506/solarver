@@ -111,3 +111,50 @@ export async function confirmarRestauracion(nombre) {
 export function descargarRespaldo(nombre) {
     window.location.href = `${API_BASE_URL}/api/respaldos/descargar/${nombre}`;
 }
+
+export async function abrirConfigRespaldos() {
+    const modal = document.getElementById('configRespaldoModal');
+    if(!modal) return alert("Falta el HTML del modal 'configRespaldoModal'");
+    
+    modal.style.display = 'flex';
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/respaldos/config`);
+        const data = await res.json();
+        if(data.success && data.config) {
+            document.getElementById('rFrecuencia').value = data.config.frecuencia || 'diario';
+            document.getElementById('rHora').value = data.config.hora || '02:00';
+        }
+    } catch(e) {}
+}
+
+export function cerrarConfigRespaldos() {
+    document.getElementById('configRespaldoModal').style.display = 'none';
+}
+
+export async function guardarConfigRespaldos() {
+    const frecuencia = document.getElementById('rFrecuencia').value;
+    const hora = document.getElementById('rHora').value;
+    const btn = document.getElementById('btnGuardarConfig');
+    
+    btn.innerText = 'Guardando...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/respaldos/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frecuencia, hora })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('¡Configuración de respaldos automáticos guardada!');
+            cerrarConfigRespaldos();
+        }
+    } catch(e) {
+        alert('Error al guardar.');
+    } finally {
+        btn.innerText = 'Guardar';
+        btn.disabled = false;
+    }
+}
