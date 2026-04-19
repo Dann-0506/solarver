@@ -21,14 +21,14 @@ def get_usuarios():
         conn   = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("""
-            SELECT u."Id_Usuario", u."Nombre", u."Username", u."Correo",
+            SELECT u."Id_Usuario", u."Nombre", u."Username", u."Correo", 
                    u."Estado", u."Foto_Perfil", r."Nombre_Rol", r."Id_Rol"
-            FROM   "USUARIO" u
-            JOIN   "ROL"     r ON u."Id_Rol" = r."Id_Rol"
-            ORDER  BY u."Id_Usuario"
+            FROM "USUARIO" u
+            JOIN "ROL" r ON u."Id_Rol" = r."Id_Rol"
+            ORDER BY u."Id_Usuario"
         """)
         usuarios = cursor.fetchall()
-        return jsonify({ 'success': True, 'usuarios': [dict(u) for u in usuarios] }), 200
+        return jsonify({'success': True, 'usuarios': usuarios}), 200
     except Exception as e:
         return jsonify({ 'success': False, 'message': str(e) }), 500
     finally:
