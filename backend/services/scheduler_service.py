@@ -59,8 +59,10 @@ def actualizar_estatus_deudas(fecha_simulada=None):
             pagado_mes = float(cursor.fetchone()['total_pagado'])
             mensualidad = float(d['Monto_Total']) / int(d['Plazo_Meses'] or 12)
 
+            pago_requerido = mensualidad + float(d['Interes_Acumulado'] or 0)
+
             # 4. Evaluar el nuevo estatus
-            if pagado_mes >= min(mensualidad, float(d['Saldo_Pendiente'])):
+            if round(pagado_mes, 2) >= round(min(pago_requerido, float(d['Saldo_Pendiente'])), 2):
                 nuevo_estatus = 'pagado'
             elif dia_hoy > dia_corte:
                 nuevo_estatus = 'atrasado'
@@ -179,8 +181,11 @@ def procesar_cobros_automaticos(fecha_simulada=None):
             if enviado:
                 print(f"Referencia enviada con éxito: {clave_ref} para {c['Nombre_Completo']}")
                 enviados += 1
-            
-        conn.commit()
+                conn.commit()
+            else:
+                print(f"Error al enviar referencia: {clave_ref} para {c['Nombre_Completo']}")
+                conn.rollback()
+        
         return enviados
         
     except Exception as e:

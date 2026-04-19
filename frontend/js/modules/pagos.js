@@ -46,17 +46,24 @@ function renderPagosPage(tbodyId, infoId, btnsId) {
     const data  = _pagosData.slice(start, end);
 
     tbody.innerHTML = data.map(p => {
+        // Detectamos si es un pago normal o huérfano
+        const esHuerfano = p.Folio.includes('HUERF');
         const saldo = parseFloat(p.Saldo_Pendiente) || 0;
-        return `<tr>
+        
+        // Colores especiales si es huérfano
+        const colorNombre = esHuerfano ? 'color:var(--error); font-weight:800;' : 'font-weight:600;';
+        const colorFondoFila = esHuerfano ? 'background: #FEF9EC;' : '';
+        const textoSaldo = esHuerfano ? 'Requiere revisión' : (saldo > 0 ? '$' + saldo.toLocaleString() : 'Saldado');
+        const colorSaldo = esHuerfano ? 'color:var(--warning)' : (saldo > 0 ? 'color:var(--error)' : 'color:var(--success)');
+
+        return `<tr style="${colorFondoFila}">
           <td style="padding:12px 16px;font-family:'Sora',sans-serif;font-size:.82rem;font-weight:600;color:var(--blue-d)">${p.Folio}</td>
-          <td style="padding:12px 16px;font-weight:600">${p.Nombre_Completo}</td>
+          <td style="padding:12px 16px; ${colorNombre}">${p.Nombre_Completo}</td>
           <td style="padding:12px 16px;font-weight:700;color:var(--success)">$${parseFloat(p.Monto).toLocaleString()}</td>
           <td style="padding:12px 16px">${p.Metodo_Pago || '—'}</td>
           <td style="padding:12px 16px;color:var(--muted);font-size:.82rem">${p.Fecha_Pago}</td>
-          <td style="padding:12px 16px;font-weight:600;color:${saldo > 0 ? 'var(--error)' : 'var(--success)'}">
-            ${saldo > 0 ? '$' + saldo.toLocaleString() : 'Saldado'}
-          </td>
-          <td style="padding:12px 16px"><span style="background:#E8F8EF;color:#27ae60;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600">${p.Estado || 'Completado'}</span></td>
+          <td style="padding:12px 16px;font-weight:600;${colorSaldo}">${textoSaldo}</td>
+          <td style="padding:12px 16px"><span style="background:${esHuerfano ? '#FEF9EC' : '#E8F8EF'};color:${esHuerfano ? '#F39C12' : '#27ae60'};padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600">${p.Estado || 'Completado'}</span></td>
         </tr>`;
     }).join('');
 
@@ -143,7 +150,7 @@ export function filtrarClientesPago() {
         lista.innerHTML = '<div style="padding:12px 16px;color:var(--muted);font-size:.84rem">Sin resultados.</div>';
     } else {
         lista.innerHTML = datos.map(c => `
-          <div onclick="window._seleccionarClientePago(${c.Id_Cliente},'${c.Nombre_Completo.replace(/'/g, "\\'")}',${c.Saldo_Pendiente}, ${c.Monto_Total}, ${c.Plazo_Meses})"
+          <div onclick="window._seleccionarClientePago(${c.Id_Cliente},'${c.Nombre_Completo.replace(/'/g, "\\'")}',${c.Saldo_Pendiente}, ${c.Monto_Total}, ${c.Plazo_Meses}, ${c.Interes_Acumulado || 0})"
             style="padding:10px 16px;cursor:pointer;font-size:.85rem;border-bottom:1px solid var(--border)"
             onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='white'">
             <div style="font-weight:600">${c.Nombre_Completo}</div>
@@ -153,7 +160,7 @@ export function filtrarClientesPago() {
     lista.style.display = 'block';
 }
 
-export function seleccionarClientePago(id, nombre, saldo, montoTotal, plazoMeses) {
+export function seleccionarClientePago(id, nombre, saldo, montoTotal, plazoMeses, interesAcumulado = 0) {
     const clienteHidden = document.getElementById('pagoCliente');
     if (clienteHidden) clienteHidden.value = id;
     const clienteInput  = document.getElementById('pagoClienteBuscar');
@@ -168,13 +175,16 @@ export function seleccionarClientePago(id, nombre, saldo, montoTotal, plazoMeses
     if (saldoDisp) saldoDisp.textContent = '$' + _pagoSaldo.toLocaleString('es-MX', { minimumFractionDigits: 2 });
     
     const plazo = parseInt(plazoMeses) || 12;
-    const mensualidad = (parseFloat(montoTotal) || 0) / plazo;
+    const mensualidadBase = (parseFloat(montoTotal) || 0) / plazo;
+    const interes = parseFloat(interesAcumulado) || 0;
+    const mensualidadConMora = mensualidadBase + interes;
+    
     const mensDisp = document.getElementById('pagoMensualidadDisp');
-    if (mensDisp) mensDisp.textContent = '$' + mensualidad.toLocaleString('es-MX', { minimumFractionDigits: 2 });
+    if (mensDisp) mensDisp.textContent = '$' + mensualidadConMora.toLocaleString('es-MX', { minimumFractionDigits: 2 });
     
     const inputMonto = document.getElementById('pagoMonto');
     if (inputMonto) {
-        inputMonto.value = Math.min(mensualidad, _pagoSaldo).toFixed(2);
+        inputMonto.value = Math.min(mensualidadConMora, _pagoSaldo).toFixed(2);
     }
     
     verificarMonto();

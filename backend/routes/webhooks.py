@@ -45,7 +45,7 @@ def recibir_pago_automatico():
             # 2. Registrar el dinero en el sistema SIN asignarlo a una deuda (Id_Deuda = NULL)
             cursor.execute("""
                 INSERT INTO "PAGO" ("Id_Deuda", "Monto", "Fecha_Pago", "Metodo_Pago", "Folio", "Estado", "Referencia_Externa")
-                VALUES (NULL, %s, NOW(), 'Transferencia_Desconocida', %s, 'pendiente', %s)
+                VALUES (NULL, %s, NOW(), 'Transferencia', %s, 'pendiente', %s)
             """, (monto_recibido, folio, referencia))
             
             conn.commit()
@@ -66,7 +66,7 @@ def recibir_pago_automatico():
         # 3. Registrar el pago en la tabla principal
         cursor.execute("""
             INSERT INTO "PAGO" ("Id_Deuda", "Monto", "Fecha_Pago", "Metodo_Pago", "Folio", "Estado", "Referencia_Externa")
-            VALUES (%s, %s, NOW(), 'Transferencia_Automatica', %s, 'completado', %s)
+            VALUES (%s, %s, NOW(), 'Transferencia', %s, 'completado', %s)
         """, (id_deuda, monto_recibido, folio, referencia))
 
         # 4. Marcar la referencia como pagada

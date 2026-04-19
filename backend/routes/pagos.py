@@ -19,10 +19,12 @@ def get_pagos():
             SELECT p."Id_Pago", p."Monto", p."Fecha_Pago",
                    p."Metodo_Pago", p."Folio", p."Estado",
                    d."Id_Deuda", d."Saldo_Pendiente", d."Monto_Total",
-                   c."Id_Cliente", c."Nombre_Completo", c."Fecha_Pago" AS "Dia_Pago"
+                   c."Id_Cliente", 
+                   COALESCE(c."Nombre_Completo", '⚠️ PAGO HUÉRFANO (No asignado)') AS "Nombre_Completo",
+                   c."Fecha_Pago" AS "Dia_Pago"
             FROM   "PAGO"    p
-            JOIN   "DEUDA"   d ON d."Id_Deuda"   = p."Id_Deuda"
-            JOIN   "CLIENTE" c ON c."Id_Cliente" = d."Id_Cliente"
+            LEFT JOIN "DEUDA"   d ON d."Id_Deuda"   = p."Id_Deuda"
+            LEFT JOIN "CLIENTE" c ON c."Id_Cliente" = d."Id_Cliente"
             ORDER  BY p."Id_Pago" DESC
             LIMIT  200
         """)
@@ -81,7 +83,7 @@ def registrar_pago():
         conn   = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("""
-            SELECT d."Id_Deuda", d."Saldo_Pendiente", d."Monto_Total", d."Plazo_Meses",
+            SELECT d."Id_Deuda", d."Saldo_Pendiente", d."Monto_Total", d."Plazo_Meses", d."Interes_Acumulado",
                    c."Nombre_Completo", c."Fecha_Pago"
             FROM "DEUDA" d
             JOIN "CLIENTE" c ON c."Id_Cliente" = d."Id_Cliente"
@@ -109,6 +111,9 @@ def registrar_pago():
 
         nuevo_saldo = max(saldo_actual - monto, 0)
 
+        interes_actual = float(deuda['Interes_Acumulado'] or 0)
+        nuevo_interes = max(interes_actual - monto, 0)
+
         hoy = datetime.now()
         dia_corte = int(deuda['Fecha_Pago'])
         
@@ -127,8 +132,9 @@ def registrar_pago():
         pagado_mes = float(cursor.fetchone()['total_pagado'])
 
         mensualidad = float(deuda['Monto_Total']) / int(deuda['Plazo_Meses'] or 12)
+        pago_requerido = mensualidad + interes_actual
 
-        if nuevo_saldo <= 0 or pagado_mes >= mensualidad:
+        if round(nuevo_saldo, 2) <= 0 or round(pagado_mes, 2) >= round(pago_requerido, 2):
             nuevo_estatus = 'pagado'
         elif hoy.day > dia_corte:
             nuevo_estatus = 'atrasado'
@@ -137,9 +143,9 @@ def registrar_pago():
 
         cursor.execute("""
             UPDATE "DEUDA"
-            SET "Saldo_Pendiente"=%s, "Estatus"=%s, "Fecha_Ultimo_Corte"=CURRENT_DATE
+            SET "Saldo_Pendiente"=%s, "Estatus"=%s, "Fecha_Ultimo_Corte"=CURRENT_DATE, "Interes_Acumulado"=%s
             WHERE "Id_Deuda"=%s
-        """, (nuevo_saldo, nuevo_estatus, deuda['Id_Deuda']))
+        """, (nuevo_saldo, nuevo_estatus, nuevo_interes, deuda['Id_Deuda']))
 
         if id_usuario:
             cursor.execute("""
