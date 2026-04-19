@@ -30,25 +30,6 @@ def listar_respaldos():
             if f.endswith('.sql'):
                 path = os.path.join(BACKUP_DIR, f)
                 stat = os.stat(path)
-                archivos.append({
-                    'nombre': f,
-                    'fecha': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
-                    'tamano': f"{round(stat.st_size / 1024, 2)} KB"
-                })
-        archivos.sort(key=lambda x: x['fecha'], reverse=True)
-        return jsonify({'success': True, 'respaldos': archivos}), 200
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@respaldos_bp.route('/respaldos', methods=['GET'])
-def listar_respaldos():
-    try:
-        archivos = []
-        for f in os.listdir(BACKUP_DIR):
-            if f.endswith('.sql'):
-                path = os.path.join(BACKUP_DIR, f)
-                stat = os.stat(path)
 
                 tipo = "Automático" if "_auto_" in f else "Manual"
                 
