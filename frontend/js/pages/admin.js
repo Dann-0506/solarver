@@ -124,3 +124,16 @@ async function verificarSesion() {
         }
     } catch(e) {}
 }
+
+function actualizarAvatar() {
+    const usuario = getUsuario();
+    const initalsEl = document.getElementById('sidebarInitials');
+
+    if (usuario && usuario.foto) {
+        initalsEl.innerHTML = `<img src="${usuario.foto}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        initalsEl.style.backgroundColor = 'transparent';
+    } else if (usuario) {
+        initalsEl.textContent = getIniciales(usuario.nombre);
+        initalsEl.style.background = '';
+    }
+}

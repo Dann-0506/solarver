@@ -87,3 +87,16 @@ function showTab(name) {
     if (name === 'pagos')          cargarPagos('pagosTableBody', 'pagosInfo', 'pagosBtns');
     if (name === 'notificaciones') { cargarClientesRec(); cargarHistorialRec(); }
 }
+
+function actualizarAvatar() {
+    const usuario = getUsuario();
+    const initalsEl = document.getElementById('sidebarInitials');
+
+    if (usuario && usuario.foto) {
+        initalsEl.innerHTML = `<img src="${usuario.foto}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        initalsEl.style.backgroundColor = 'transparent';
+    } else if (usuario) {
+        initalsEl.textContent = getIniciales(usuario.nombre);
+        initalsEl.style.background = '';
+    }
+}
