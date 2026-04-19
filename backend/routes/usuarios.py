@@ -22,7 +22,7 @@ def get_usuarios():
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("""
             SELECT u."Id_Usuario", u."Nombre", u."Username", u."Correo",
-                   u."Estado", r."Nombre_Rol", r."Id_Rol"
+                   u."Estado", u."Foto_Perfil", r."Nombre_Rol", r."Id_Rol"
             FROM   "USUARIO" u
             JOIN   "ROL"     r ON u."Id_Rol" = r."Id_Rol"
             ORDER  BY u."Id_Usuario"

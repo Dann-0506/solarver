@@ -46,10 +46,16 @@ export async function cargarUsuarios() {
             const ini   = getIniciales(u.Nombre);
             const esAdm = u.Nombre_Rol.toLowerCase().includes('admin');
             const esYo  = u.Username === usuarioActual?.username;
-            const color = esAdm ? 'background:linear-gradient(135deg,var(--orange),var(--orange-d))' : '';
+            const colorBg = esAdm ? 'background:linear-gradient(135deg,var(--orange),var(--orange-d))' : '';
+
+            const avatarHtml = u.Foto_Perfil 
+                ? `<img src="${u.Foto_Perfil}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`
+                : ini;
+            const avatarStyle = u.Foto_Perfil ? 'background:transparent; padding:0;' : colorBg;
+
             return `<tr>
               <td><div style="display:flex;align-items:center;gap:10px">
-                <div class="pay-av" style="${color}">${ini}</div>
+                <div class="pay-av" style="${avatarStyle}">${avatarHtml}</div>
                 <div>
                   <div style="font-weight:600">${u.Nombre}${esYo ? ' <span style="font-size:.7rem;background:rgba(30,133,200,0.1);color:var(--blue);padding:1px 6px;border-radius:4px">Tú</span>' : ''}</div>
                   <div style="font-size:.74rem;color:var(--muted)">@${u.Username}</div>
