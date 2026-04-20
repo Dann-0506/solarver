@@ -11,6 +11,20 @@ let _pagaron            = [];
 let _faltan             = [];
 let _pagosRealizados    = [];
 
+export function inicializarFechasReporte() {
+    const inputInicio = document.getElementById('filtroFechaInicio');
+    const inputFin = document.getElementById('filtroFechaFin');
+    
+    if (inputInicio && inputFin && !inputInicio.value) {
+        const hoy = new Date();
+        const haceUnMes = new Date();
+        haceUnMes.setMonth(hoy.getMonth() - 1);
+        
+        inputFin.value = hoy.toISOString().split('T')[0];
+        inputInicio.value = haceUnMes.toISOString().split('T')[0];
+    }
+}
+
 export async function cargarDatosReporte() {
     try {
         const res  = await fetch(`${API_BASE_URL}/api/reportes/estado-mensual`);
@@ -102,7 +116,9 @@ export async function descargarReporte(formato) {
     btn.textContent = 'Generando...';
 
     try {
-        const url = `${API_BASE_URL}/api/reportes/exportar?tipo=${tipo}&formato=${formato}`;
+        const inicio = document.getElementById('filtroFechaInicio').value;
+        const fin = document.getElementById('filtroFechaFin').value;
+        const url = `${API_BASE_URL}/api/reportes/exportar?tipo=${tipo}&formato=${formato}&inicio=${inicio}&fin=${fin}`;
         const res = await fetch(url);
         
         if (!res.ok) {
@@ -133,7 +149,11 @@ export async function descargarReporte(formato) {
 }
 
 export async function actualizarVistaReporte() {
+    inicializarFechasReporte();
+
     const tipo = document.getElementById('selTipoReporte').value;
+    const inicio = document.getElementById('filtroFechaInicio').value;
+    const fin = document.getElementById('filtroFechaFin').value;
     const thead = document.getElementById('reporteTableHead');
     const tbody = document.getElementById('reporteTableBody');
     const resumenEl = document.getElementById('reporteResumen');
@@ -145,16 +165,14 @@ export async function actualizarVistaReporte() {
 
     if (tipo === 'realizados') {
         // --- LÓGICA PARA REPORTE DE PAGOS REALIZADOS ---
-        if (_pagosRealizados.length === 0) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/reportes/ingresos-mensuales`);
-                const data = await res.json();
-                if (data.success) _pagosRealizados = data.pagos;
-            } catch (e) { 
-                console.error('Error cargando pagos:', e); 
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:red">Error al cargar los datos</td></tr>';
-                return;
-            }
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/reportes/ingresos-mensuales?inicio=${inicio}&fin=${fin}`);
+            const data = await res.json();
+            if (data.success) _pagosRealizados = data.pagos;
+        } catch (e) { 
+            console.error('Error cargando pagos:', e); 
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:red">Error al cargar los datos</td></tr>';
+            return;
         }
 
         if (tituloEl) tituloEl.textContent = "Vista Previa de Ingresos Mensuales";
