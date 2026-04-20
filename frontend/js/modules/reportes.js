@@ -11,6 +11,20 @@ let _pagaron            = [];
 let _faltan             = [];
 let _pagosRealizados    = [];
 
+export function inicializarFechasReporte() {
+    const inputInicio = document.getElementById('filtroFechaInicio');
+    const inputFin = document.getElementById('filtroFechaFin');
+    
+    if (inputInicio && inputFin && !inputInicio.value) {
+        const hoy = new Date();
+        const haceUnMes = new Date();
+        haceUnMes.setMonth(hoy.getMonth() - 1);
+        
+        inputFin.value = hoy.toISOString().split('T')[0];
+        inputInicio.value = haceUnMes.toISOString().split('T')[0];
+    }
+}
+
 export async function cargarDatosReporte() {
     try {
         const res  = await fetch(`${API_BASE_URL}/api/reportes/estado-mensual`);
