@@ -52,7 +52,10 @@ def get_estado_mensual():
 
 @reportes_bp.route('/reportes/ingresos-mensuales', methods=['GET'])
 def get_ingresos_mensuales():
+    inicio, fin = procesar_rango_fechas(request)
+
     conn = cursor = None
+    
     try:
         conn = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -63,9 +66,9 @@ def get_ingresos_mensuales():
             JOIN "DEUDA" d ON p."Id_Deuda" = d."Id_Deuda"
             JOIN "CLIENTE" c ON d."Id_Cliente" = c."Id_Cliente"
             WHERE p."Estado" = 'completado' 
-              AND p."Fecha_Pago" >= CURRENT_DATE - INTERVAL '1 month'
+              AND p."Fecha_Pago" BETWEEN %s AND %s
             ORDER BY p."Fecha_Pago" DESC
-        """)
+        """, (inicio, fin))
         pagos = cursor.fetchall()
         for p in pagos:
             if p.get('Fecha_Pago'):
@@ -82,6 +85,8 @@ def get_ingresos_mensuales():
 def exportar_reporte():
     tipo = request.args.get('tipo', 'integral')
     formato = request.args.get('formato', 'pdf')
+
+    inicio, fin = procesar_rango_fechas(request)
     
     conn = cursor = None
     try:
@@ -89,7 +94,6 @@ def exportar_reporte():
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
         if tipo == 'realizados':
-            # Exportación de pagos restringida al ÚLTIMO MES
             cursor.execute("""
                 SELECT p."Folio", c."Nombre_Completo" AS "Cliente", 
                        c."Telefono", c."Correo",
@@ -98,9 +102,9 @@ def exportar_reporte():
                 JOIN "DEUDA" d ON p."Id_Deuda" = d."Id_Deuda"
                 JOIN "CLIENTE" c ON d."Id_Cliente" = c."Id_Cliente"
                 WHERE p."Estado" = 'completado'
-                  AND p."Fecha_Pago" >= CURRENT_DATE - INTERVAL '1 month'
+                  AND p."Fecha_Pago" BETWEEN %s AND %s
                 ORDER BY p."Fecha_Pago" DESC
-            """)
+            """, (inicio, fin))
             datos = cursor.fetchall()
             for d in datos:
                 if d.get('Fecha_Pago'):
