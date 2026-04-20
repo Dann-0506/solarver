@@ -118,7 +118,7 @@ export async function descargarReporte(formato) {
     try {
         const inicio = document.getElementById('filtroFechaInicio').value;
         const fin = document.getElementById('filtroFechaFin').value;
-        const url = `${API_BASE_URL}/api/reportes/exportar?tipo=${tipo}&formato=${formato}`;
+        const url = `${API_BASE_URL}/api/reportes/exportar?tipo=${tipo}&formato=${formato}&inicio=${inicio}&fin=${fin}`;
         const res = await fetch(url);
         
         if (!res.ok) {
