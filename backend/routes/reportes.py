@@ -6,8 +6,22 @@ from db import get_connection
 import psycopg2.extras
 from services.notificaciones_service import iniciar_envio_masivo
 from services.documentos_service import generar_excel_reporte, generar_pdf_reporte
+from datetime import datetime, timedelta
 
 reportes_bp = Blueprint('reportes', __name__)
+
+def procesar_rango_fechas(request):
+    inicio_str = request.args.get('inicio')
+    fin_str = request.args.get('fin')
+
+    if not inicio_str or not fin_str:
+        fin_dt = datetime.now()
+        inicio_dt = fin_dt - timedelta(days=30)
+    else:
+        inicio_dt = datetime.strptime(inicio_str, '%Y-%m-%d')
+        fin_dt = datetime.strptime(fin_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+    
+    return inicio_dt, fin_dt
 
 @reportes_bp.route('/reportes/estado-mensual', methods=['GET'])
 def get_estado_mensual():
