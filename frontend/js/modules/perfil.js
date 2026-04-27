@@ -1,5 +1,8 @@
 import { getUsuario, actualizarDatosSesion } from '../core/auth.js';
 import { API_BASE_URL } from '../core/api.js';
+import { mostrarToast } from '../core/utils.js'; // 👈 Importamos el nuevo servicio de Toasts
+
+let inicializado = false;
 
 export function inicializarPerfil() {
     const usuario = getUsuario();
@@ -14,7 +17,8 @@ export function inicializarPerfil() {
     document.getElementById('usernamePerfil').value = usuario.username || '';
 
     if (usuario.foto) {
-        const urlFoto = usuario.foto.startsWith('http') ? usuario.foto : `${API_BASE_URL}${usuario.foto}`;
+        const rutaLimpia = usuario.foto.startsWith('/') ? usuario.foto.substring(1) : usuario.foto;
+        const urlFoto = usuario.foto.startsWith('http') ? usuario.foto : `${API_BASE_URL}/${rutaLimpia}`;
         previewContainer.innerHTML = `<img src="${urlFoto}" style="width:100%; height:100%; object-fit:cover;">`;
     }
 
@@ -22,7 +26,8 @@ export function inicializarPerfil() {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) {
-                alert('La imagen es demasiado grande. El máximo permitido es 5MB.');
+                // 👈 Reemplazamos alert por mostrarToast
+                mostrarToast('La imagen es demasiado grande. El máximo permitido es 5MB.', 'error');
                 this.value = '';
                 return;
             }
@@ -34,6 +39,8 @@ export function inicializarPerfil() {
             reader.readAsDataURL(file);
         }
     });
+
+    if (inicializado) return;
 
     formDatos.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -71,13 +78,14 @@ export function inicializarPerfil() {
                     window.actualizarAvatarSidebar();
                 }
 
-                alert('¡Datos personales actualizados correctamente!');
+                // 👈 Reemplazamos alert por mostrarToast
+                mostrarToast('¡Datos personales actualizados correctamente!', 'success');
             } else {
-                alert(result.message || 'Error al actualizar el perfil.');
+                mostrarToast(result.message || 'Error al actualizar el perfil.', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error de conexión con el servidor.');
+            mostrarToast('Error de conexión con el servidor.', 'error');
         } finally {
             btnSubmit.innerText = textoOriginal;
             btnSubmit.disabled = false;
@@ -92,7 +100,8 @@ export function inicializarPerfil() {
         const passConfirmar = document.getElementById('passwordConfirmar').value;
 
         if (passNueva !== passConfirmar) {
-            alert('Las contraseñas nuevas no coinciden.');
+            // 👈 Reemplazamos alert por mostrarToast (tipo warning)
+            mostrarToast('Las contraseñas nuevas no coinciden.', 'warning');
             return;
         }
 
@@ -116,17 +125,19 @@ export function inicializarPerfil() {
             const result = await response.json();
 
             if (result.success) {
-                alert('¡Contraseña actualizada con éxito!');
+                mostrarToast('¡Contraseña actualizada con éxito!', 'success');
                 formPassword.reset();
             } else {
-                alert(result.message || 'Error al actualizar la contraseña.');
+                mostrarToast(result.message || 'Error al actualizar la contraseña.', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error de conexión con el servidor.');
+            mostrarToast('Error de conexión con el servidor.', 'error');
         } finally {
             btnSubmit.innerText = textoOriginal;
             btnSubmit.disabled = false;
         }
     });
+
+    inicializado = true;
 }

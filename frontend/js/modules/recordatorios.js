@@ -5,7 +5,8 @@
 
 import { API_BASE_URL } from '../core/api.js';
 import { getUsuario } from '../core/auth.js';
-import { getIniciales, mostrarAlerta } from '../core/utils.js';
+// 👈 Importamos nuestras nuevas utilidades globales
+import { getIniciales, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
 let _recClientes = [];
 
@@ -24,7 +25,8 @@ export async function cargarClientesRec() {
         _recClientes = data.clientes;
         renderClientesRec();
     } catch (e) {
-        lista.innerHTML = '<div style="text-align:center;padding:32px;color:var(--error)">No se pudo conectar.</div>';
+        lista.innerHTML = '<div style="text-align:center;padding:32px;color:var(--error)">No se pudo conectar con el servidor.</div>';
+        mostrarToast('Error de red al cargar la lista de deudores.', 'error');
     }
 }
 
@@ -33,94 +35,82 @@ function renderClientesRec() {
     if (!lista) return;
     
     lista.innerHTML = _recClientes.map(c => {
-        // Obtenemos la mensualidad calculada en el backend y el saldo restante
-        const pagoMensual = parseFloat(c.Mensualidad || 0); 
-        const saldoTotal  = parseFloat(c.Saldo_Pendiente || 0);
-        
-        const st      = (c.Estatus || '').toLowerCase();
-        const stColor = st === 'atrasado' ? 'var(--error)' : '#F39C12';
-        const stBg    = st === 'atrasado' ? '#FDECEA'      : '#FEF9EC';
-        const ini     = getIniciales(c.Nombre_Completo);
-        
+        const deuda = parseFloat(c.Saldo_Pendiente) || 0;
         return `
-          <label style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);cursor:pointer"
-            onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='white'">
-            <input type="checkbox" class="rec-check" value="${c.Id_Cliente}" onchange="window._actualizarConteoRec()"
-              style="width:16px;height:16px;accent-color:var(--orange);cursor:pointer">
-            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-d));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;color:white;flex-shrink:0">${ini}</div>
-            
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.Nombre_Completo}</div>
-              <div style="font-size:.75rem;color:var(--muted)">Día límite: ${c.Fecha_Pago} de cada mes</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)">
+            <div>
+                <div style="font-weight:600">${c.Nombre_Completo}</div>
+                <div style="font-size:0.8rem;color:var(--muted)">${c.Telefono || 'Sin teléfono'} | ${c.Correo || 'Sin correo'}</div>
             </div>
-            
-            <div style="text-align:right;flex-shrink:0">
-              <div style="font-weight:700;font-family:'Sora',sans-serif;color:var(--error);font-size:.88rem">
-                Pago: $${pagoMensual.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-              <div style="font-size:.65rem;color:var(--muted);margin-bottom:4px">
-                Deuda restante: $${saldoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-              <span style="background:${stBg};color:${stColor};padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:600">${st.charAt(0).toUpperCase() + st.slice(1)}</span>
+            <div style="display:flex;align-items:center;gap:12px">
+                <div style="font-weight:bold;color:var(--error)">$${deuda.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</div>
+                <button class="btn-primary" style="padding:6px 12px;font-size:0.8rem" onclick="window._abrirModalRecordatorio(${c.Id_Cliente}, '${c.Nombre_Completo.replace(/'/g, "\\'")}')">Enviar Aviso</button>
             </div>
-          </label>`;
+        </div>`;
     }).join('');
+}
+
+export function abrirModalRecordatorio(idCliente, nombreCliente) {
+    const hiddenId = document.getElementById('recClienteId');
+    const labelNombre = document.getElementById('recClienteNombre');
     
-    actualizarConteoRec();
+    if (hiddenId) hiddenId.value = idCliente;
+    if (labelNombre) labelNombre.textContent = nombreCliente;
+    
+    const modal = document.getElementById('recordatorioModal');
+    if (modal) modal.classList.add('open');
 }
 
-export function actualizarConteoRec() {
-    const checks = document.querySelectorAll('.rec-check:checked');
-    const el     = document.getElementById('recSeleccionados');
-    if (el) el.textContent = `${checks.length} seleccionado(s)`;
+export function cerrarModalRecordatorio() {
+    const modal = document.getElementById('recordatorioModal');
+    if (modal) modal.classList.remove('open');
 }
 
-export function seleccionarTodosRec() {
-    const checks = document.querySelectorAll('.rec-check');
-    const todos  = Array.from(checks).every(c => c.checked);
-    checks.forEach(c => c.checked = !todos);
-    actualizarConteoRec();
-}
-
-// ── Enviar recordatorios ───────────────────────────────────
-export async function enviarRecordatorios() {
-    const checks  = document.querySelectorAll('.rec-check:checked');
-    const ids     = Array.from(checks).map(c => parseInt(c.value));
+export async function enviarRecordatorio() {
+    const idCliente = document.getElementById('recClienteId')?.value;
+    const canal = document.getElementById('recCanal')?.value;
     const usuario = getUsuario();
-    const canal   = document.getElementById('recCanal').value; // LEEMOS EL CANAL SELECCIONADO
 
-    if (!ids.length) {
-        mostrarAlerta('recAlert', '⚠️ Selecciona al menos un cliente.', 'warning');
+    // Limitado a SMS o Correo por definición técnica del proyecto (US-09)
+    if (!canal || (canal !== 'sms' && canal !== 'correo')) {
+        mostrarToast('Selecciona un canal válido (SMS o Correo).', 'warning');
         return;
     }
 
-    const btn = document.getElementById('btnEnviarRec');
-    if (btn) { btn.textContent = 'Enviando...'; btn.disabled = true; }
-    const alertEl = document.getElementById('recAlert');
-    if (alertEl) alertEl.style.display = 'none';
+    // 👈 Usamos el modal global asíncrono
+    const confirmado = await confirmarAccionGlobal(
+        'Enviar Recordatorio', 
+        `¿Deseas procesar y enviar el recordatorio vía ${canal.toUpperCase()}?`
+    );
+    if (!confirmado) return;
+
+    const btn = document.getElementById('btnEnviarRecordatorio');
+    if (btn) {
+        btn.textContent = 'Enviando...';
+        btn.disabled = true;
+    }
 
     try {
-        const res  = await fetch(`${API_BASE_URL}/api/recordatorios/enviar`, {
-            method : 'POST',
+        const res = await fetch(`${API_BASE_URL}/api/recordatorios/enviar`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // ENVIAMOS EL CANAL EN EL BODY
-            body   : JSON.stringify({ ids_clientes: ids, id_usuario: usuario?.id, canal: canal })
+            body: JSON.stringify({ id_cliente: parseInt(idCliente), canal, id_usuario: usuario?.id })
         });
         const data = await res.json();
+        
         if (data.success) {
-            mostrarAlerta('recAlert', `${data.message}`, 'success');
-            document.querySelectorAll('.rec-check').forEach(c => c.checked = false);
-            actualizarConteoRec();
-            cargarHistorialRec();
+            mostrarToast('Recordatorio enviado con éxito.', 'success'); // 👈 Reemplazo de alerta
+            cerrarModalRecordatorio();
+            cargarHistorialRec(); // Refrescar la lista de enviados
         } else {
-            mostrarAlerta('recAlert', `${data.message}`, 'error');
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarAlerta('recAlert', 'No se pudo conectar con el servidor.', 'error');
+        mostrarToast('Error de conexión al enviar el recordatorio.', 'error');
     } finally {
-        if (btn) { 
-            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar Notificación`; 
-            btn.disabled = false; 
+        if (btn) {
+            btn.textContent = 'Confirmar Envío';
+            btn.disabled = false;
         }
     }
 }
@@ -144,12 +134,13 @@ export async function cargarHistorialRec() {
               <span style="background:#E8F8EF;color:#27ae60;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:600">✓ ${r.Canal}</span>
             </div>
             <div style="font-size:.76rem;color:var(--muted)">${r.Fecha_Envio} · Por: ${r.Usuario || '—'}</div>
-            <div style="font-size:.78rem;color:var(--muted);margin-top:2px">${r.Mensaje}</div>
-          </div>`).join('');
-    } catch (e) {
-        lista.innerHTML = '<div style="text-align:center;padding:32px;color:var(--error)">No se pudo cargar.</div>';
+          </div>
+        `).join('');
+    } catch(e) {
+        lista.innerHTML = '<div style="text-align:center;padding:32px;color:var(--error)">Error al cargar el historial.</div>';
     }
 }
 
-// ── Exponer al scope global ────────────────────────────────
-window._actualizarConteoRec = actualizarConteoRec;
+window._abrirModalRecordatorio = abrirModalRecordatorio;
+window._enviarRecordatorio = enviarRecordatorio;
+window._cerrarModalRecordatorio = cerrarModalRecordatorio;

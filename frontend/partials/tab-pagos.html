@@ -1,6 +1,3 @@
-<!--
-  Archivo: frontend/partials/tab-pagos.html
--->
 <div class="section-header" style="margin-bottom:20px">
   <h3>Pagos y cobros</h3>
   <button class="btn-primary" style="font-size:.82rem;padding:9px 18px" onclick="abrirModalPago()">
@@ -30,7 +27,6 @@
   </div>
 </div>
 
-<!-- Modal registrar pago -->
 <div class="modal-overlay" id="pagoModal">
   <div class="modal" style="max-width:520px">
     <button class="modal-close" onclick="cerrarModalPago()">
@@ -38,7 +34,7 @@
     </button>
     <h3 style="margin-bottom:4px">Registrar pago</h3>
     <p class="sub" style="margin-bottom:20px">Selecciona el cliente y completa los datos del abono.</p>
-    <div id="pagoAlert" style="display:none;padding:10px 14px;border-radius:8px;font-size:.82rem;font-weight:500;margin-bottom:14px;border-left:3px solid"></div>
+    
     <div id="pagoAdvertencia" style="display:none;padding:10px 14px;border-radius:8px;font-size:.82rem;font-weight:500;margin-bottom:14px;background:#FEF9EC;color:#F39C12;border-left:3px solid #F39C12"></div>
     <div style="display:flex;flex-direction:column;gap:14px">
       <div class="form-group">
@@ -94,7 +90,6 @@
   </div>
 </div>
 
-<!-- Modal comprobante de pago -->
 <div class="modal-overlay" id="comprobanteModal">
   <div class="modal" style="max-width:420px;text-align:center">
     <div style="width:60px;height:60px;border-radius:50%;background:#E8F8EF;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">

@@ -5,7 +5,8 @@
 
 import { API_BASE_URL } from '../core/api.js';
 import { getUsuario } from '../core/auth.js';
-import { renderPagBtns, mostrarAlerta, ocultarAlerta } from '../core/utils.js';
+// 👈 Actualizamos las importaciones para usar nuestro nuevo sistema
+import { renderPagBtns, mostrarToast } from '../core/utils.js';
 
 const PER_PAGE  = 8;
 let _pagosData  = [];
@@ -46,11 +47,9 @@ function renderPagosPage(tbodyId, infoId, btnsId) {
     const data  = _pagosData.slice(start, end);
 
     tbody.innerHTML = data.map(p => {
-        // Detectamos si es un pago normal o huérfano
         const esHuerfano = p.Folio.includes('HUERF');
         const saldo = parseFloat(p.Saldo_Pendiente) || 0;
         
-        // Colores especiales si es huérfano
         const colorNombre = esHuerfano ? 'color:var(--error); font-weight:800;' : 'font-weight:600;';
         const colorFondoFila = esHuerfano ? 'background: #FEF9EC;' : '';
         const textoSaldo = esHuerfano ? 'Requiere revisión' : (saldo > 0 ? '$' + saldo.toLocaleString() : 'Saldado');
@@ -81,7 +80,7 @@ export function cambiarPaginaPagos(p) {
 
 // ── Modal de registro de pago ──────────────────────────────
 export async function abrirModalPago(modalId = 'pagoModal') {
-    ocultarAlerta('pagoAlert');
+    // 👈 Ya no necesitamos ocultarAlerta()
     const fields = ['pagoMonto', 'pagoMetodo'];
     fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const fecha = document.getElementById('pagoFecha');
@@ -214,11 +213,11 @@ export async function guardarPago() {
     const fecha     = document.getElementById('pagoFecha')?.value;
     const usuario   = getUsuario();
 
-    ocultarAlerta('pagoAlert');
-    if (!idCliente) { mostrarAlerta('pagoAlert', 'Selecciona un cliente.', 'error'); return; }
-    if (!monto || monto <= 0) { mostrarAlerta('pagoAlert', 'El monto debe ser mayor a $0.', 'error'); return; }
-    if (!metodo)  { mostrarAlerta('pagoAlert', 'Selecciona un método de pago.', 'error'); return; }
-    if (!fecha)   { mostrarAlerta('pagoAlert', 'Selecciona una fecha.', 'error'); return; }
+    // 👈 Reemplazamos todos los mostrarAlerta por mostrarToast
+    if (!idCliente) { mostrarToast('Selecciona un cliente.', 'error'); return; }
+    if (!monto || monto <= 0) { mostrarToast('El monto debe ser mayor a $0.', 'error'); return; }
+    if (!metodo)  { mostrarToast('Selecciona un método de pago.', 'error'); return; }
+    if (!fecha)   { mostrarToast('Selecciona una fecha.', 'error'); return; }
 
     const btn = document.getElementById('btnGuardarPago');
     if (btn) { btn.textContent = 'Registrando...'; btn.disabled = true; }
@@ -231,6 +230,7 @@ export async function guardarPago() {
         });
         const data = await res.json();
         if (data.success) {
+            mostrarToast('Pago registrado correctamente', 'success'); // 👈 Añadimos feedback positivo
             const nombre = document.getElementById('pagoClienteBuscar')?.value || '';
             cerrarModalPago();
             // Rellenar comprobante
@@ -249,10 +249,10 @@ export async function guardarPago() {
             document.getElementById('comprobanteModal').classList.add('open');
             cargarPagos();
         } else {
-            mostrarAlerta('pagoAlert', data.message, 'error');
+            mostrarToast(data.message, 'error'); // 👈
         }
     } catch (e) {
-        mostrarAlerta('pagoAlert', 'No se pudo conectar con el servidor.', 'error');
+        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
     } finally {
         if (btn) { btn.textContent = 'Confirmar pago'; btn.disabled = false; }
     }

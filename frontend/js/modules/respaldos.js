@@ -1,12 +1,13 @@
 import { API_BASE_URL } from '../core/api.js';
-import { getUsuario } from '../core/auth.js'; // 👈 Importamos la sesión activa
+import { getUsuario } from '../core/auth.js';
+import { mostrarToast, confirmarAccionGlobal } from '../core/utils.js'; // 👈 Importamos nuestras utilidades
 
 // ─── FUNCIÓN AUXILIAR DE SEGURIDAD ───
 // Extrae el usuario y prepara los headers para enviarlos al servidor
 function getAuthHeaders(isJson = true) {
     const usuario = getUsuario();
     const headers = {
-        'X-Username': usuario ? usuario.username : '' // 👈 Credencial de admin
+        'X-Username': usuario ? usuario.username : ''
     };
     if (isJson) {
         headers['Content-Type'] = 'application/json';
@@ -22,7 +23,7 @@ export async function actualizarVistaConfig() {
     try {
         const res = await fetch(`${API_BASE_URL}/api/respaldos/config`, {
             method: 'GET',
-            headers: getAuthHeaders(false) // 👈 Petición segura
+            headers: getAuthHeaders(false)
         });
         const data = await res.json();
         
@@ -63,7 +64,7 @@ export async function cargarRespaldos() {
     try {
         const res = await fetch(`${API_BASE_URL}/api/respaldos`, {
             method: 'GET',
-            headers: getAuthHeaders(false) // 👈 Petición segura
+            headers: getAuthHeaders(false)
         });
         const data = await res.json();
 
@@ -118,80 +119,92 @@ export async function crearRespaldo() {
     try {
         const res = await fetch(`${API_BASE_URL}/api/respaldos`, { 
             method: 'POST',
-            headers: getAuthHeaders(), // 👈 Petición segura
+            headers: getAuthHeaders(),
             body: JSON.stringify({ tipo: 'manual' })
         });
         const data = await res.json();
         if (data.success) {
-            alert('Respaldo manual creado con éxito.');
+            mostrarToast('Respaldo manual creado con éxito.', 'success'); // 👈
             cargarRespaldos();
         } else {
-            alert('Error: ' + data.message);
+            mostrarToast('Error: ' + data.message, 'error'); // 👈
         }
-    } catch (e) { alert('Error al crear respaldo'); }
+    } catch (e) { 
+        mostrarToast('Error al crear respaldo', 'error'); // 👈
+    }
 }
 
 export async function confirmarRestauracion(nombre) {
-    if (!confirm(`⚠️ ADVERTENCIA CRÍTICA:\n\nVas a restaurar la base de datos al estado del archivo: ${nombre}.\nTodos los cambios actuales se perderán.\n\n¿Deseas continuar?`)) {
-        return;
-    }
+    const confirmado = await confirmarAccionGlobal(
+        'Restaurar Sistema', 
+        `¿Restaurar la base de datos al estado de ${nombre}? Los cambios actuales se perderán.`
+    );
+    if (!confirmado) return;
 
     try {
         const res = await fetch(`${API_BASE_URL}/api/respaldos/restaurar`, {
             method: 'POST',
-            headers: getAuthHeaders(), // 👈 Petición segura
+            headers: getAuthHeaders(),
             body: JSON.stringify({ nombre })
         });
         const data = await res.json();
         if (data.success) {
-            alert('Base de datos restaurada correctamente. El sistema se reiniciará.');
-            window.location.reload();
+            mostrarToast('Base de datos restaurada correctamente. Reiniciando...', 'success');
+            setTimeout(() => window.location.reload(), 2000);
         } else {
-            alert('Error: ' + data.message);
+            mostrarToast('Error: ' + data.message, 'error');
         }
-    } catch (e) { alert('Error de conexión'); }
+    } catch (e) { 
+        mostrarToast('Error de conexión', 'error'); // 👈
+    }
 }
 
 export async function confirmarEliminarRespaldo(nombre) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el respaldo:\n${nombre}?\n\nEsta acción NO se puede deshacer.`)) {
-        return;
-    }
+    // 👈 Reemplazamos confirm nativo por nuestra función asíncrona global
+    const confirmado = await confirmarAccionGlobal(
+        'Eliminar Respaldo',
+        `¿Estás seguro de que deseas eliminar permanentemente el respaldo:\n${nombre}?\n\nEsta acción NO se puede deshacer.`
+    );
+    
+    if (!confirmado) return;
 
     try {
         const res = await fetch(`${API_BASE_URL}/api/respaldos/${nombre}`, {
             method: 'DELETE',
-            headers: getAuthHeaders(false) // 👈 Petición segura
+            headers: getAuthHeaders(false)
         });
         const data = await res.json();
         
         if (data.success) {
-            alert('Respaldo eliminado con éxito.');
+            mostrarToast('Respaldo eliminado con éxito.', 'success'); // 👈
             cargarRespaldos(); 
         } else {
-            alert('Error al eliminar: ' + data.message);
+            mostrarToast('Error al eliminar: ' + data.message, 'error'); // 👈
         }
     } catch (e) {
-        alert('Error de conexión con el servidor.');
+        mostrarToast('Error de conexión con el servidor.', 'error'); // 👈
     }
 }
 
 export function descargarRespaldo(nombre) {
     const usuario = getUsuario();
     if (!usuario) return;
-    // 👈 Inyectamos la credencial en la URL (GET request)
     window.location.href = `${API_BASE_URL}/api/respaldos/descargar/${nombre}?u=${usuario.username}`;
 }
 
 export async function abrirConfigRespaldos() {
     const modal = document.getElementById('configRespaldoModal');
-    if(!modal) return alert("Falta el HTML del modal 'configRespaldoModal'");
+    if(!modal) {
+        mostrarToast("Falta el HTML del modal 'configRespaldoModal'", 'error'); // 👈
+        return;
+    }
     
     modal.style.display = 'flex';
     
     try {
         const res = await fetch(`${API_BASE_URL}/api/respaldos/config`, {
             method: 'GET',
-            headers: getAuthHeaders(false) // 👈 Petición segura
+            headers: getAuthHeaders(false)
         });
         const data = await res.json();
         if(data.success && data.config) {
@@ -216,19 +229,19 @@ export async function guardarConfigRespaldos() {
     try {
         const res = await fetch(`${API_BASE_URL}/api/respaldos/config`, {
             method: 'POST',
-            headers: getAuthHeaders(), // 👈 Petición segura
+            headers: getAuthHeaders(),
             body: JSON.stringify({ frecuencia, hora })
         });
         const data = await res.json();
         if (data.success) {
-            alert('¡Configuración de respaldos automáticos guardada!');
+            mostrarToast('¡Configuración de respaldos automáticos guardada!', 'success'); // 👈
             cerrarConfigRespaldos();
             actualizarVistaConfig();
         } else {
-            alert('Error: ' + data.message);
+            mostrarToast('Error: ' + data.message, 'error'); // 👈
         }
     } catch(e) {
-        alert('Error al guardar.');
+        mostrarToast('Error al guardar.', 'error'); // 👈
     } finally {
         btn.innerText = 'Guardar';
         btn.disabled = false;

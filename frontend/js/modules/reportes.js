@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL } from '../core/api.js';
+import { mostrarToast, confirmarAccionGlobal } from '../core/utils.js'; // 👈 Importamos nuestras utilidades
 
 let _reporteActual     = 'faltan';
 let _reporteData        = [];
@@ -141,7 +142,7 @@ export async function descargarReporte(formato) {
         window.URL.revokeObjectURL(downloadUrl);
 
     } catch (e) {
-        alert("Error: " + e.message);
+        mostrarToast("Error: " + e.message, 'error'); // 👈 Reemplazamos alert
     } finally {
         btn.disabled = false;
         btn.textContent = originalText;
@@ -164,7 +165,6 @@ export async function actualizarVistaReporte() {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Cargando datos...</td></tr>';
 
     if (tipo === 'realizados') {
-        // --- LÓGICA PARA REPORTE DE PAGOS REALIZADOS ---
         try {
             const res = await fetch(`${API_BASE_URL}/api/reportes/ingresos-mensuales?inicio=${inicio}&fin=${fin}`);
             const data = await res.json();
@@ -206,7 +206,6 @@ export async function actualizarVistaReporte() {
             return;
         }
 
-        // Llenar cuerpo de la tabla
         tbody.innerHTML = _pagosRealizados.map(p => `
             <tr style="border-top:1px solid var(--border)">
                 <td style="padding:12px 16px; font-weight:600; font-size:.85rem; color:var(--blue-d)">${p.Folio}</td>
@@ -222,7 +221,6 @@ export async function actualizarVistaReporte() {
         `).join('');
 
     } else {
-        // --- LÓGICA PARA REPORTE DE CARTERA (Pendientes / Atrasados / Integral) ---
         if (_pagaron.length === 0 && _faltan.length === 0) await cargarDatosReporte();
 
         if (tituloEl) tituloEl.textContent = "Vista Previa de Cobranza Mensual";
@@ -241,13 +239,10 @@ export async function actualizarVistaReporte() {
         let datosAmostrar = [];
         
         if (tipo === 'integral') {
-            // Todos los clientes con deuda (al corriente y los que faltan)
             datosAmostrar = [..._pagaron, ..._faltan];
         } else if (tipo === 'pendiente') {
-            // Solo los que faltan y su estatus es estrictamente 'pendiente'
             datosAmostrar = _faltan.filter(c => c.Estatus.toLowerCase() === 'pendiente');
         } else if (tipo === 'atrasado') {
-            // Solo los que faltan y su estatus es estrictamente 'atrasado'
             datosAmostrar = _faltan.filter(c => c.Estatus.toLowerCase() === 'atrasado');
         }
 
@@ -295,17 +290,22 @@ export async function enviarEstadosDeCuenta() {
     const tipo = document.getElementById('selTipoReporte').value;
     
     if (tipo === 'realizados') {
-        alert("Esta acción solo está disponible para reportes de cobranza.");
+        mostrarToast("Esta acción solo está disponible para reportes de cobranza.", 'warning'); // 👈 Reemplazamos alert
         return;
     }
 
-    const confirmacion = confirm(`¿Enviar los Estados de Cuenta en PDF por correo a la lista de "${tipo.toUpperCase()}"?`);
+    // 👈 Reemplazamos el confirm nativo por nuestra versión asíncrona y elegante
+    const confirmacion = await confirmarAccionGlobal(
+        'Confirmar Envío Masivo', 
+        `¿Deseas enviar los Estados de Cuenta en PDF por correo a la lista de "${tipo.toUpperCase()}"?`
+    );
+    
     if (!confirmacion) return;
 
     const btn = event.target;
     const textoOriginal = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'Enviando...';
+    btn.textContent = 'Enviando correos...';
 
     try {
         const url = `${API_BASE_URL}/api/reportes/enviar-masivo`;
@@ -317,12 +317,12 @@ export async function enviarEstadosDeCuenta() {
         
         const data = await res.json();
         if (data.success) {
-            alert("✅ " + data.message);
+            mostrarToast(data.message, 'success'); // 👈 Reemplazamos alert de éxito
         } else {
-            alert("⚠️ " + data.message);
+            mostrarToast(data.message, 'error'); // 👈 Reemplazamos alert de advertencia/error
         }
     } catch (e) {
-        alert("Error: " + e.message);
+        mostrarToast("Error de conexión al enviar: " + e.message, 'error'); // 👈 Reemplazamos alert de catch
     } finally {
         btn.disabled = false;
         btn.textContent = textoOriginal;

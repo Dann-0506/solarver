@@ -4,7 +4,7 @@
  */
 
 import { API_BASE_URL } from '../core/api.js';
-import { renderPagBtns } from '../core/utils.js';
+import { renderPagBtns, mostrarToast } from '../core/utils.js'; // 👈 Añadido mostrarToast
 
 const PER_PAGE = 10;
 let _historialData = [];
@@ -16,43 +16,50 @@ const accionColor = {
     'REGISTRAR_PAGO':      { bg: 'rgba(46,213,115,0.1)',  color: '#27ae60', label: 'Pago'            },
     'ACTUALIZAR_ESTATUS':  { bg: 'rgba(52,152,219,0.1)',  color: '#2980b9', label: 'Estatus auto'    },
     'RECORDATORIO_CORREO': { bg: 'rgba(241,196,15,0.1)',  color: '#f39c12', label: 'Recordatorio'    },
-    'CREAR_USUARIO':       { bg: 'rgba(255,122,31,0.1)',  color: '#FF7A1F', label: 'Nuevo usuario'   },
-    'EDITAR_USUARIO':      { bg: 'rgba(155,89,182,0.1)',  color: '#8e44ad', label: 'Edición usuario' },
+    'CREAR_USUARIO':       { bg: 'rgba(255,122,31,0.1)',  color: '#ff7a1f', label: 'Nuevo Usuario'   },
+    'ELIMINAR_USUARIO':    { bg: 'rgba(231,76,60,0.1)',   color: '#e74c3c', label: 'Borrar Usuario'  },
+    'ELIMINAR_CLIENTE':    { bg: 'rgba(231,76,60,0.1)',   color: '#e74c3c', label: 'Borrar Cliente'  }
 };
 
-// ── Cargar historial desde API ─────────────────────────────
 export async function cargarHistorial() {
     const tbody = document.getElementById('historialTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Cargando...</td></tr>';
+    
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Cargando historial...</td></tr>';
+    
     try {
-        const res  = await fetch(`${API_BASE_URL}/api/historial`);
+        const res = await fetch(`${API_BASE_URL}/api/historial`);
         const data = await res.json();
-        if (!data.success) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--error)">Error al cargar historial.</td></tr>';
-            return;
+        
+        if (data.success) {
+            _historialData = data.historial || [];
+            _historialPage = 1;
+            renderHistorial();
+        } else {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--error)">${data.message}</td></tr>`;
+            mostrarToast(data.message, 'error'); // 👈
         }
-        _historialData = data.historial;
-        _historialPage = 1;
-        const countEl = document.getElementById('historialCount');
-        if (countEl) countEl.textContent = `(${_historialData.length})`;
-        renderHistorialPage();
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--error)">No se pudo conectar con el servidor.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--error)">Error al conectar con el servidor.</td></tr>';
+        mostrarToast('Error al conectar con el servidor para cargar el historial.', 'error'); // 👈
     }
 }
 
-function renderHistorialPage() {
+function renderHistorial() {
     const tbody = document.getElementById('historialTableBody');
     if (!tbody) return;
+    
     const total = _historialData.length;
     const pages = Math.ceil(total / PER_PAGE) || 1;
     const start = (_historialPage - 1) * PER_PAGE;
     const end   = Math.min(start + PER_PAGE, total);
     const data  = _historialData.slice(start, end);
 
-    if (!total) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);font-style:italic">Sin registros aún.</td></tr>';
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);font-style:italic">No hay registros recientes en el sistema.</td></tr>';
+        const infoEl = document.getElementById('historialPagInfo');
+        if (infoEl) infoEl.textContent = '';
+        renderPagBtns('historialBtns', 1, 1, 'window._cambiarPaginaHistorial');
         return;
     }
 
@@ -71,15 +78,14 @@ function renderHistorialPage() {
 
     const infoEl = document.getElementById('historialPagInfo');
     if (infoEl) infoEl.textContent = `Mostrando ${start + 1}-${end} de ${total} registros`;
-    renderPagBtns('historialPagBtns', pages, _historialPage, 'window._cambiarHistorialPage');
+    renderPagBtns('historialBtns', pages, _historialPage, 'window._cambiarPaginaHistorial');
 }
 
-export function cambiarHistorialPage(p) {
+export function cambiarPaginaHistorial(p) {
     const pages = Math.ceil(_historialData.length / PER_PAGE) || 1;
     if (p < 1 || p > pages) return;
     _historialPage = p;
-    renderHistorialPage();
+    renderHistorial();
 }
 
-// ── Exponer al scope global ────────────────────────────────
-window._cambiarHistorialPage = cambiarHistorialPage;
+window._cambiarPaginaHistorial = cambiarPaginaHistorial;
