@@ -79,3 +79,56 @@ def conciliar_manual(id_referencia):
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
+
+
+@conciliaciones_bp.route('/conciliaciones/manual/masivo', methods=['POST'])
+def conciliar_masivo():
+    data = request.get_json()
+    referencias = data.get('referencias', [])
+    
+    if not referencias:
+        return jsonify({'success': False, 'message': 'No se enviaron referencias para procesar.'}), 400
+
+    conn = cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        procesados = 0
+        
+        for id_ref in referencias:
+            cursor.execute('SELECT * FROM "REFERENCIAPAGO" WHERE "Id_Referencia" = %s AND "Estado" = %s', (id_ref, 'Pendiente'))
+            ref = cursor.fetchone()
+            if not ref:
+                continue
+                
+            monto = float(ref['Monto_Esperado'])
+            id_deuda = ref['Id_Deuda']
+
+            cursor.execute("SELECT nextval('folio_seq') AS num")
+            folio = f"FOL-MAN-{cursor.fetchone()['num']}"
+
+            cursor.execute("""
+                INSERT INTO "PAGO" ("Id_Deuda","Monto","Fecha_Pago","Metodo_Pago","Folio","Estado","Referencia_Externa")
+                VALUES (%s, %s, NOW(), 'Conciliación', %s, 'completado', %s)
+            """, (id_deuda, monto, folio, ref['Clave_Ref']))
+
+            cursor.execute('UPDATE "REFERENCIAPAGO" SET "Estado" = %s WHERE "Id_Referencia" = %s', ('Conciliado_Manual', id_ref))
+
+            cursor.execute('SELECT "Saldo_Pendiente" FROM "DEUDA" WHERE "Id_Deuda"=%s', (id_deuda,))
+            deuda = cursor.fetchone()
+            nuevo_saldo = max(float(deuda['Saldo_Pendiente']) - monto, 0)
+            nuevo_estatus = 'pagado' if nuevo_saldo <= 0 else 'pendiente'
+            
+            cursor.execute('UPDATE "DEUDA" SET "Saldo_Pendiente"=%s, "Estatus"=%s WHERE "Id_Deuda"=%s', (nuevo_saldo, nuevo_estatus, id_deuda))
+            
+            procesados += 1
+
+        conn.commit()
+        return jsonify({'success': True, 'message': f'{procesados} pagos conciliados exitosamente de manera masiva.'}), 200
+
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
