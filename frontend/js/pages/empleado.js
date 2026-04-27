@@ -18,7 +18,6 @@ import { cargarPagos, abrirModalPago, cerrarModalPago, cerrarComprobante,
 import { cargarClientesRec, seleccionarTodosRec,
          enviarRecordatorios, cargarHistorialRec } from '../modules/recordatorios.js';
 import { inicializarPerfil } from '../modules/perfil.js';
-import { act } from 'react';
 
 const TABS = ['dashboard', 'clientes', 'pagos', 'notificaciones', 'perfil'];
 
