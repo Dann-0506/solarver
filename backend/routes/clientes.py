@@ -4,6 +4,8 @@ Expone los endpoints REST para creación, edición, eliminación y
 consulta de clientes junto con sus pagos asociados.
 """
 
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras

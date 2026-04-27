@@ -4,6 +4,8 @@ Expone los endpoints REST para consultar referencias pendientes de
 conciliación y procesarlas de forma individual o masiva.
 """
 
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras

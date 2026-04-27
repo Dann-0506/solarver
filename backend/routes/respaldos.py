@@ -6,6 +6,8 @@ respaldos automáticos. Todos los endpoints están protegidos y solo
 accesibles para usuarios con rol de administrador.
 """
 
+from __future__ import annotations
+
 import os
 import json
 import subprocess

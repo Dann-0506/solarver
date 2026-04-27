@@ -6,6 +6,8 @@ referencias huérfanas o inválidas (pago sin asignar para conciliación
 manual).
 """
 
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras

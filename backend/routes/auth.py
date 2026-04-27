@@ -5,6 +5,8 @@ de sesiones activas. Implementa bloqueo temporal por intentos fallidos y
 verificación de contraseñas con bcrypt.
 """
 
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 from datetime import datetime, timedelta

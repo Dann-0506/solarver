@@ -5,6 +5,8 @@ usuarios del sistema, así como para actualizar el perfil y cambiar
 la contraseña del usuario autenticado.
 """
 
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify, current_app, Response
 from db import get_connection
 import psycopg2.extras

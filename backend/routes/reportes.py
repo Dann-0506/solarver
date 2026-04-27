@@ -5,6 +5,8 @@ exportar reportes en PDF o Excel y disparar el envío masivo de estados
 de cuenta por correo electrónico.
 """
 
+from __future__ import annotations
+
 from flask import Blueprint, jsonify, request, send_file, Response, Request
 from db import get_connection
 import psycopg2.extras

@@ -5,6 +5,8 @@ generación de folios. Incluye la lógica de actualización de saldo
 y estatus de deuda tras cada pago.
 """
 
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras
