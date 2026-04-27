@@ -233,7 +233,7 @@ def actualizar_perfil(id_usuario):
 
 @usuarios_bp.route('/usuarios/perfil/<int:id_usuario>/password', methods=['PUT'])
 def actualizar_password_perfil(id_usuario):
-    data = request.json
+    data = request.get_json(silent=True) or {}
     pass_actual = data.get('password_actual')
     pass_nueva = data.get('password_nueva')
 
@@ -251,20 +251,28 @@ def actualizar_password_perfil(id_usuario):
         if not usuario:
             return jsonify({'success': False, 'message': 'Usuario no encontrado.'}), 404
 
-        contrasena_bd = usuario['Contrasena'].encode('utf-8')
-        if not bcrypt.checkpw(pass_actual.encode('utf-8'), contrasena_bd):
+        contrasena_bd = usuario.get('Contrasena', '')
+        es_correcta = False
+
+        try:
+            es_correcta = bcrypt.checkpw(pass_actual.encode('utf-8'), contrasena_bd.encode('utf-8'))
+        except ValueError:
+            if pass_actual == contrasena_bd:
+                es_correcta = True
+
+        if not es_correcta:
             return jsonify({'success': False, 'message': 'La contraseña actual es incorrecta.'}), 401
 
         salt = bcrypt.gensalt()
         hash_nuevo = bcrypt.hashpw(pass_nueva.encode('utf-8'), salt).decode('utf-8')
-        
+
         cursor.execute(
             'UPDATE "USUARIO" SET "Contrasena" = %s WHERE "Id_Usuario" = %s', 
             (hash_nuevo, id_usuario)
         )
         conn.commit()
 
-        return jsonify({'success': True, 'message': 'Contraseña actualizada con éxito.'}), 200
+        return jsonify({'success': True, 'message': '¡Contraseña actualizada y encriptada con éxito!'}), 200
 
     except Exception as e:
         if conn: conn.rollback()
