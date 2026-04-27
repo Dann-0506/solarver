@@ -1,16 +1,24 @@
-# Archivo: backend/routes/clientes.py
-# Rutas para gestión de clientes: creación, edición, eliminación y consulta de pagos asociados.
+"""Rutas para gestión de clientes.
 
-from flask import Blueprint, request, jsonify
+Expone los endpoints REST para creación, edición, eliminación y
+consulta de clientes junto con sus pagos asociados.
+"""
+
+from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras
 from services.validators_service import validar_correo, validar_telefono
 
 clientes_bp = Blueprint('clientes', __name__)
 
-# ── GET /api/clientes ──────────────────────────────────────
 @clientes_bp.route('/clientes', methods=['GET'])
-def get_clientes():
+def get_clientes() -> tuple[Response, int]:
+    """Retorna la lista completa de clientes con su deuda asociada.
+
+    Returns:
+        Tupla (respuesta JSON, 200) con la lista de clientes y datos de
+        deuda. Retorna 500 ante error de base de datos.
+    """
     conn = cursor = None
     try:
         conn   = get_connection()
@@ -33,9 +41,21 @@ def get_clientes():
         if conn:   conn.close()
 
 
-# ── POST /api/clientes ─────────────────────────────────────
 @clientes_bp.route('/clientes', methods=['POST'])
-def crear_cliente():
+def crear_cliente() -> tuple[Response, int]:
+    """Registra un nuevo cliente junto con su deuda inicial.
+
+    Lee los datos del cuerpo JSON, valida formato de correo y teléfono,
+    verifica unicidad de identificación y crea el cliente con su registro
+    de deuda en la misma transacción. Registra el evento en el historial
+    si se provee id_usuario.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 201 con el ID del
+        cliente creado; 400 si faltan campos obligatorios o los datos son
+        inválidos; 409 si ya existe un cliente con esa identificación;
+        500 ante error de base de datos.
+    """
     data           = request.get_json()
     nombre         = data.get('nombre', '').strip()
     identificacion = data.get('identificacion', '').strip().upper()
@@ -98,9 +118,21 @@ def crear_cliente():
         if conn:   conn.close()
 
 
-# ── PUT /api/clientes/<id> ─────────────────────────────────
 @clientes_bp.route('/clientes/<int:id_cliente>', methods=['PUT'])
-def editar_cliente(id_cliente):
+def editar_cliente(id_cliente: int) -> tuple[Response, int]:
+    """Actualiza los datos editables de un cliente existente.
+
+    La identificación no se puede modificar por regla de negocio (REQDOM-02).
+    Registra el evento en el historial si se provee id_usuario.
+
+    Args:
+        id_cliente: ID del cliente a actualizar.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 200 en éxito; 400 si
+        faltan campos obligatorios o los datos son inválidos; 500 ante
+        error de base de datos.
+    """
     data       = request.get_json()
     nombre     = data.get('nombre', '').strip()
     correo     = data.get('correo', '').strip()
@@ -108,7 +140,6 @@ def editar_cliente(id_cliente):
     direccion  = data.get('direccion', '').strip()
     fecha_pago = data.get('fecha_pago')
     id_usuario = data.get('id_usuario')
-    # identificacion NO se acepta en edición (REQDOM-02)
 
     if not all([nombre, fecha_pago]):
         return jsonify({ 'success': False, 'message': 'Nombre y fecha de pago son obligatorios.' }), 400
@@ -149,9 +180,22 @@ def editar_cliente(id_cliente):
         if conn:   conn.close()
 
 
-# ── DELETE /api/clientes/<id> ──────────────────────────────
 @clientes_bp.route('/clientes/<int:id_cliente>', methods=['DELETE'])
-def eliminar_cliente(id_cliente):
+def eliminar_cliente(id_cliente: int) -> tuple[Response, int]:
+    """Elimina un cliente y todos sus datos relacionados.
+
+    Bloquea la eliminación si el cliente tiene saldo pendiente. Realiza
+    la cascada de borrado manualmente: historial, recordatorios, pagos,
+    deuda y finalmente el cliente.
+
+    Args:
+        id_cliente: ID del cliente a eliminar.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 200 en éxito; 404 si
+        el cliente no existe; 409 si tiene saldo pendiente; 500 ante error
+        de base de datos.
+    """
     conn = cursor = None
     try:
         conn   = get_connection()
@@ -160,7 +204,6 @@ def eliminar_cliente(id_cliente):
         cliente = cursor.fetchone()
         if not cliente:
             return jsonify({ 'success': False, 'message': 'Cliente no encontrado.' }), 404
-        # Verificar si tiene saldo pendiente
         cursor.execute('SELECT "Saldo_Pendiente" FROM "DEUDA" WHERE "Id_Cliente"=%s', (id_cliente,))
         deuda = cursor.fetchone()
         if deuda and float(deuda['Saldo_Pendiente']) > 0:
@@ -185,9 +228,18 @@ def eliminar_cliente(id_cliente):
         if conn:   conn.close()
 
 
-# ── GET /api/clientes/<id>/pagos ───────────────────────────
 @clientes_bp.route('/clientes/<int:id_cliente>/pagos', methods=['GET'])
-def get_pagos_cliente(id_cliente):
+def get_pagos_cliente(id_cliente: int) -> tuple[Response, int]:
+    """Retorna los últimos 5 pagos de un cliente.
+
+    Args:
+        id_cliente: ID del cliente cuyo historial se consulta.
+
+    Returns:
+        Tupla (respuesta JSON, 200) con lista de hasta 5 pagos recientes
+        con fecha formateada como DD/MM/YYYY. Retorna 500 ante error de
+        base de datos.
+    """
     conn = cursor = None
     try:
         conn   = get_connection()

@@ -1,7 +1,11 @@
-# Archivo: backend/routes/reportes.py
-# Rutas para generación de reportes y envío masivo de estados de cuenta.
+"""Rutas para generación y envío de reportes.
 
-from flask import Blueprint, jsonify, request, send_file
+Expone los endpoints REST para consultar el estado mensual de clientes,
+exportar reportes en PDF o Excel y disparar el envío masivo de estados
+de cuenta por correo electrónico.
+"""
+
+from flask import Blueprint, jsonify, request, send_file, Response, Request
 from db import get_connection
 import psycopg2.extras
 from services.notificaciones_service import iniciar_envio_masivo
@@ -10,7 +14,20 @@ from datetime import datetime, timedelta
 
 reportes_bp = Blueprint('reportes', __name__)
 
-def procesar_rango_fechas(request):
+
+def procesar_rango_fechas(request: Request) -> tuple[datetime, datetime]:
+    """Extrae y normaliza el rango de fechas de los parámetros de la petición.
+
+    Si no se proporcionan los parámetros ``inicio`` y ``fin``, el rango
+    por defecto es los últimos 30 días hasta ahora. La fecha de fin se
+    ajusta al último segundo del día para incluir todos los registros.
+
+    Args:
+        request: Objeto Request de Flask con los parámetros de la URL.
+
+    Returns:
+        Tupla (inicio_dt, fin_dt) como objetos datetime.
+    """
     inicio_str = request.args.get('inicio')
     fin_str = request.args.get('fin')
 
@@ -23,8 +40,18 @@ def procesar_rango_fechas(request):
     
     return inicio_dt, fin_dt
 
+
 @reportes_bp.route('/reportes/estado-mensual', methods=['GET'])
-def get_estado_mensual():
+def get_estado_mensual() -> tuple[Response, int]:
+    """Retorna el estado de pago mensual de clientes con saldo pendiente.
+
+    Separa los clientes en dos grupos: los que ya pagaron en el periodo
+    actual ('pagado') y los que aún no ('faltan').
+
+    Returns:
+        Tupla (respuesta JSON, 200) con las claves ``pagaron`` y ``faltan``.
+        Retorna 500 ante error de base de datos.
+    """
     conn = cursor = None
     try:
         conn = get_connection()
@@ -51,7 +78,16 @@ def get_estado_mensual():
 
 
 @reportes_bp.route('/reportes/ingresos-mensuales', methods=['GET'])
-def get_ingresos_mensuales():
+def get_ingresos_mensuales() -> tuple[Response, int]:
+    """Retorna los pagos completados dentro del rango de fechas indicado.
+
+    Acepta los parámetros de URL ``inicio`` y ``fin`` (formato YYYY-MM-DD).
+    Si se omiten, usa los últimos 30 días.
+
+    Returns:
+        Tupla (respuesta JSON, 200) con lista de pagos y fecha formateada
+        como DD/MM/YYYY HH:MM. Retorna 500 ante error de base de datos.
+    """
     inicio, fin = procesar_rango_fechas(request)
 
     conn = cursor = None
@@ -82,7 +118,17 @@ def get_ingresos_mensuales():
 
 
 @reportes_bp.route('/reportes/exportar', methods=['GET'])
-def exportar_reporte():
+def exportar_reporte() -> Response | tuple[Response, int]:
+    """Genera y descarga un reporte en PDF o Excel.
+
+    Acepta los parámetros de URL ``tipo`` (``integral``, ``realizados``,
+    ``pendiente``, ``atrasado``) y ``formato`` (``pdf`` o ``excel``).
+    La generación del documento se delega al servicio de documentos.
+
+    Returns:
+        Respuesta con el archivo adjunto para descarga en caso de éxito.
+        Retorna tupla (respuesta JSON, 500) ante error de base de datos.
+    """
     tipo = request.args.get('tipo', 'integral')
     formato = request.args.get('formato', 'pdf')
 
@@ -125,7 +171,6 @@ def exportar_reporte():
             cursor.execute(query)
             datos = cursor.fetchall()
 
-        # ── DELEGACIÓN DE LA CREACIÓN DEL DOCUMENTO AL SERVICIO ──
         if formato == 'excel':
             output = generar_excel_reporte(datos)
             return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -142,7 +187,20 @@ def exportar_reporte():
 
 
 @reportes_bp.route('/reportes/enviar-masivo', methods=['POST'])
-def enviar_estados_cuenta():
+def enviar_estados_cuenta() -> tuple[Response, int]:
+    """Dispara el envío masivo de estados de cuenta por correo electrónico.
+
+    Solo aplica a clientes con deuda activa y correo registrado. El tipo
+    'realizados' no es válido para este endpoint. El envío se delega al
+    servicio de notificaciones de forma asíncrona; la respuesta es
+    inmediata (HTTP 202).
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 202 en éxito con el
+        conteo de correos a enviar; 400 si el tipo es 'realizados'; 404 si
+        ningún cliente del segmento tiene correo; 500 ante error de base de
+        datos.
+    """
     data = request.get_json()
     tipo = data.get('tipo', 'integral') 
     
@@ -153,8 +211,7 @@ def enviar_estados_cuenta():
     try:
         conn = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        # Filtramos solo a los que tienen Correo configurado
+
         query = """
             SELECT c."Nombre_Completo" as "Cliente", c."Correo",
                    c."Fecha_Pago" as "Dia_Pago", d."Saldo_Pendiente", d."Estatus"

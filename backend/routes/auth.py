@@ -1,22 +1,38 @@
-# Archivo: backend/routes/auth.py
-# Rutas para autenticación de usuarios, manejo de sesiones y seguridad.
+"""Rutas de autenticación de usuarios y manejo de sesiones.
 
-from flask import Blueprint, request, jsonify
+Expone los endpoints REST para inicio de sesión y verificación de estado
+de sesiones activas. Implementa bloqueo temporal por intentos fallidos y
+verificación de contraseñas con bcrypt.
+"""
+
+from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 from datetime import datetime, timedelta
 import psycopg2.extras
 import bcrypt
 
-# Crear el Blueprint para autenticación
 auth_bp = Blueprint('auth', __name__)
 
-# Variables globales del módulo
-usuarios_eliminados = set()
-MAX_INTENTOS   = 3
-TIEMPO_BLOQUEO = timedelta(minutes=5)
+# NOTE: usuarios_eliminados vive solo en memoria; se vacía al reiniciar el servidor
+usuarios_eliminados: set[str] = set()
+MAX_INTENTOS: int         = 3
+TIEMPO_BLOQUEO: timedelta = timedelta(minutes=5)
 
 @auth_bp.route('/login', methods=['POST'])
-def login():
+def login() -> tuple[Response, int]:
+    """Autentica a un usuario con sus credenciales.
+
+    Lee username y contraseña del cuerpo JSON, verifica el estado de la
+    cuenta y aplica la lógica de bloqueo por intentos fallidos. En caso
+    de éxito retorna los datos del usuario y la ruta de redirección según
+    su rol.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 200 en éxito con datos
+        del usuario y ruta de redirección; 400 si faltan credenciales; 401
+        si son incorrectas; 403 si la cuenta está inactiva o bloqueada;
+        500 ante error inesperado del servidor.
+    """
     data     = request.get_json()
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
@@ -44,7 +60,6 @@ def login():
         if not usuario['Estado']:
             return jsonify({ 'success': False, 'message': 'Tu cuenta está inactiva. Contacta al administrador.' }), 403
 
-        # ── Verificar bloqueo ──
         if usuario['Fecha_Bloqueo']:
             tiempo_restante = usuario['Fecha_Bloqueo'] - datetime.now()
             if tiempo_restante.total_seconds() > 0:
@@ -54,13 +69,13 @@ def login():
                 cursor.execute('UPDATE "USUARIO" SET "Intentos_Fallidos"=0, "Fecha_Bloqueo"=NULL WHERE "Username"=%s', (username,))
                 conn.commit()
 
-        # ── Verificar contraseña ──
         contrasena_bd = usuario['Contrasena']
         es_valida     = False
 
         if contrasena_bd.startswith('$2b$') or contrasena_bd.startswith('$2a$'):
             es_valida = bcrypt.checkpw(password.encode('utf-8'), contrasena_bd.encode('utf-8'))
         else:
+            # FIXME: comparación en texto plano expone contraseñas sin hash; migrar todas las cuentas a bcrypt
             es_valida = (password == contrasena_bd)
 
         if not es_valida:
@@ -76,7 +91,6 @@ def login():
                 restantes = MAX_INTENTOS - nuevos_intentos
                 return jsonify({ 'success': False, 'message': f'Contraseña incorrecta. Te quedan {restantes} intento(s).' }), 401
 
-        # ── Login exitoso ──
         nombre_rol = usuario['Nombre_Rol'].lower()
         cursor.execute('UPDATE "USUARIO" SET "Intentos_Fallidos"=0, "Fecha_Bloqueo"=NULL WHERE "Username"=%s', (username,))
         conn.commit()
@@ -105,7 +119,18 @@ def login():
         if conn:   conn.close()
 
 @auth_bp.route('/session/check', methods=['POST'])
-def check_session():
+def check_session() -> tuple[Response, int]:
+    """Verifica si la sesión de un usuario sigue siendo válida.
+
+    Comprueba si el username recibido está en el conjunto en memoria de
+    usuarios eliminados. Si lo está, lo descarta del conjunto y señala la
+    sesión como inválida; en caso contrario la confirma como válida.
+    Siempre retorna HTTP 200 independientemente del resultado.
+
+    Returns:
+        Tupla (respuesta JSON, 200) con el campo ``valid`` (bool) y,
+        cuando la cuenta fue eliminada, un mensaje de error.
+    """
     data     = request.get_json()
     username = data.get('username', '').strip()
     if username in usuarios_eliminados:
