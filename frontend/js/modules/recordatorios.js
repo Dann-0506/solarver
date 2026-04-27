@@ -71,13 +71,11 @@ export async function enviarRecordatorio() {
     const canal = document.getElementById('recCanal')?.value;
     const usuario = getUsuario();
 
-    // Limitado a SMS o Correo por definición técnica del proyecto (US-09)
     if (!canal || (canal !== 'sms' && canal !== 'correo')) {
         mostrarToast('Selecciona un canal válido (SMS o Correo).', 'warning');
         return;
     }
 
-    // 👈 Usamos el modal global asíncrono
     const confirmado = await confirmarAccionGlobal(
         'Enviar Recordatorio', 
         `¿Deseas procesar y enviar el recordatorio vía ${canal.toUpperCase()}?`
@@ -94,14 +92,20 @@ export async function enviarRecordatorio() {
         const res = await fetch(`${API_BASE_URL}/api/recordatorios/enviar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cliente: parseInt(idCliente), canal, id_usuario: usuario?.id })
+            // 👈 CORRECCIÓN: Se cambia 'id_cliente' por 'ids_clientes' y se envía como ARREGLO
+            body: JSON.stringify({ 
+                ids_clientes: [parseInt(idCliente)], // El servidor espera una lista []
+                canal: canal, 
+                id_usuario: usuario?.id 
+            })
         });
+        
         const data = await res.json();
         
         if (data.success) {
-            mostrarToast('Recordatorio enviado con éxito.', 'success'); // 👈 Reemplazo de alerta
+            mostrarToast('Recordatorio enviado con éxito.', 'success');
             cerrarModalRecordatorio();
-            cargarHistorialRec(); // Refrescar la lista de enviados
+            cargarHistorialRec(); 
         } else {
             mostrarToast(data.message, 'error');
         }

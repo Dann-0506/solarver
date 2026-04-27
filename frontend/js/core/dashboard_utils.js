@@ -132,7 +132,7 @@ export async function cargarListasDashboard() {
         try {
             const resR = await fetch(`${API_BASE_URL}/api/recordatorios/historial`); 
             const dataR = await resR.json();
-            const recordatorios = (dataR.recordatorios || []).slice(0, 2); // 👈 Limitado a 2
+            const recordatorios = (dataR.recordatorios || []).slice(0, 1); // 👈 Limitado a 2
             
             if (recordatorios.length > 0) {
                 divRec.innerHTML = recordatorios.map(r => `
