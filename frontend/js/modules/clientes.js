@@ -6,7 +6,8 @@
 
 import { API_BASE_URL } from '../core/api.js';
 import { esAdmin, getUsuario } from '../core/auth.js';
-import { getIniciales, renderPagBtns, mostrarAlerta, ocultarAlerta } from '../core/utils.js';
+// 👈 Importamos nuestras nuevas utilidades
+import { getIniciales, renderPagBtns, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
 const PER_PAGE = 7;
 let allClients   = [];
@@ -14,7 +15,6 @@ let filteredData = [];
 let currentPage  = 1;
 let activeFilter = null;
 let editingId    = null;
-let deletingId   = null;
 
 // ── Cargar clientes desde API ──────────────────────────────
 export async function cargarClientes() {
@@ -243,7 +243,7 @@ export function cerrarPerfilModal() {
 // ── Crear / Editar cliente ─────────────────────────────────
 export function abrirModalCliente(modo = 'crear', id = null) {
     editingId = modo === 'editar' ? id : null;
-    ocultarAlerta('clienteModalAlert');
+    
     const titulo = document.getElementById('clienteModalTitulo');
     if (titulo) titulo.textContent = modo === 'editar' ? 'Editar cliente' : 'Nuevo cliente';
     if (modo === 'crear') {
@@ -287,12 +287,13 @@ export async function guardarCliente() {
     const plazo_meses  = document.getElementById('cPlazo')?.value;
     const usuario      = getUsuario();
 
+    // 👈 Reemplazamos alertas por Toasts
     if (!nombre || !fecha_pago) {
-        mostrarAlerta('clienteModalAlert', 'Nombre y fecha de pago son obligatorios.', 'error');
+        mostrarToast('Nombre y fecha de pago son obligatorios.', 'error');
         return;
     }
     if (!editingId && !identificacion) {
-        mostrarAlerta('clienteModalAlert', 'La identificación es obligatoria.', 'error');
+        mostrarToast('La identificación es obligatoria.', 'error');
         return;
     }
 
@@ -313,52 +314,42 @@ export async function guardarCliente() {
         const data = await res.json();
         if (data.success) {
             cerrarModalCliente();
-            mostrarAlerta('tablaAlert', `Cliente ${editingId ? 'actualizado' : 'registrado'} correctamente.`, 'success');
+            mostrarToast(`Cliente ${editingId ? 'actualizado' : 'registrado'} correctamente.`, 'success'); // 👈
             cargarClientes();
             cargarStats();
         } else {
-            mostrarAlerta('clienteModalAlert', data.message, 'error');
+            mostrarToast(data.message, 'error'); // 👈
         }
     } catch (e) {
-        mostrarAlerta('clienteModalAlert', 'No se pudo conectar con el servidor.', 'error');
+        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
     } finally {
         if (btn) { btn.textContent = 'Guardar'; btn.disabled = false; }
     }
 }
 
-// ── Eliminar cliente ───────────────────────────────────────
-export function confirmarEliminarCliente(id, nombre) {
-    deletingId = id;
-    const el = document.getElementById('deleteClienteNombre');
-    if (el) el.textContent = nombre;
-    document.getElementById('deleteClienteModal').classList.add('open');
-}
+// ── Eliminar cliente (Lógica Unificada con el Global Modal) ──
+export async function confirmarEliminarCliente(id, nombre) {
+    // 👈 Creamos el modal dinámico
+    const confirmado = await confirmarAccionGlobal(
+        'Eliminar Cliente',
+        `¿Estás seguro de que deseas eliminar permanentemente a ${nombre}?\nSe perderá todo su historial.`
+    );
+    
+    if (!confirmado) return;
 
-export function cerrarDeleteClienteModal() {
-    deletingId = null;
-    document.getElementById('deleteClienteModal').classList.remove('open');
-}
-
-export async function ejecutarEliminarCliente() {
-    if (!deletingId) return;
-    const btn = document.getElementById('btnConfirmarEliminarCliente');
-    if (btn) { btn.textContent = 'Eliminando...'; btn.disabled = true; }
     try {
-        const res  = await fetch(`${API_BASE_URL}/api/clientes/${deletingId}`, { method: 'DELETE' });
+        const res  = await fetch(`${API_BASE_URL}/api/clientes/${id}`, { method: 'DELETE' });
         const data = await res.json();
-        cerrarDeleteClienteModal();
+        
         if (data.success) {
-            mostrarAlerta('tablaAlert', 'Cliente eliminado correctamente.', 'success');
+            mostrarToast('Cliente eliminado correctamente.', 'success'); // 👈
             cargarClientes();
             cargarStats();
         } else {
-            mostrarAlerta('tablaAlert', data.message, 'error');
+            mostrarToast(data.message, 'error'); // 👈
         }
     } catch (e) {
-        cerrarDeleteClienteModal();
-        mostrarAlerta('tablaAlert', 'No se pudo conectar con el servidor.', 'error');
-    } finally {
-        if (btn) { btn.textContent = 'Sí, eliminar'; btn.disabled = false; }
+        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
     }
 }
 

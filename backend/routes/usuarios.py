@@ -177,6 +177,7 @@ def archivo_permitido(filename):
 def actualizar_perfil(id_usuario):
     nombre  = request.form.get('nombre', '').strip()
     username = request.form.get('username', '').strip()
+    foto_url = None
 
     if not nombre or not username:
         return jsonify({ 'success': False, 'message': 'Nombre y username son obligatorios.' }), 400
@@ -198,10 +199,8 @@ def actualizar_perfil(id_usuario):
 
                 path_completo = os.path.join(upload_folder, filename)
                 file.save(path_completo)
-
                 foto_url = f'/static/uploads/profiles/{filename}'
 
-        
         query = 'UPDATE "USUARIO" SET "Nombre"=%s, "Username"=%s'
         params = [nombre, username]
 

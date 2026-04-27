@@ -22,9 +22,58 @@
     padding: 0;
 }
 
+html, body {
+    height: 100%;
+    overflow-x: hidden; /* Evita el desplazamiento horizontal accidental */
+}
+
 body {
-    font-family: "DM Sans", sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    display: flex;
     min-height: 100vh;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    /* Aseguramos que no haya scroll si no es necesario */
+    overflow-y: auto;
+}
+
+#toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none; /* Para que no bloquee clics detrás cuando está invisible */
+}
+
+.toast {
+    min-width: 280px;
+    max-width: 400px;
+    padding: 14px 20px;
+    border-radius: 12px;
+    color: white;
+    font-family: 'Sora', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    pointer-events: auto;
+    animation: slideInRight 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), fadeOut 0.3s ease 3.5s forwards;
+}
+
+.toast.success { background: var(--success); }
+.toast.error { background: var(--error); }
+.toast.warning { background: var(--orange); }
+
+@keyframes slideInRight {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; visibility: hidden; margin-top: -50px; }
 }

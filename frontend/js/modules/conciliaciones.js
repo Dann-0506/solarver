@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../core/api.js';
-import { mostrarAlerta } from '../core/utils.js';
+// 👈 Importamos nuestras nuevas utilidades y quitamos mostrarAlerta
+import { mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
 export async function cargarConciliaciones() {
     const tbody = document.getElementById('conciliacionesTableBody');
@@ -48,7 +49,12 @@ export async function cargarConciliaciones() {
 
 // -- Conciliación Uno a Uno --
 export async function conciliarManual(id_referencia, clave) {
-    if (!confirm(`¿Estás 100% seguro de registrar manualmente el pago para la referencia ${clave}?`)) return;
+    // 👈 Reemplazamos el confirm nativo por el modal asíncrono
+    const confirmado = await confirmarAccionGlobal(
+        'Confirmar Conciliación',
+        `¿Estás 100% seguro de registrar manualmente el pago para la referencia ${clave}?`
+    );
+    if (!confirmado) return;
     
     try {
         const res = await fetch(`${API_BASE_URL}/api/conciliaciones/manual/${id_referencia}`, { 
@@ -58,13 +64,14 @@ export async function conciliarManual(id_referencia, clave) {
         const data = await res.json();
         
         if (data.success) {
-            mostrarAlerta('concilAlert', '✅ Pago registrado exitosamente.', 'success');
+            // 👈 Reemplazamos mostrarAlerta por mostrarToast
+            mostrarToast('Pago registrado exitosamente.', 'success'); 
             cargarConciliaciones(); 
         } else {
-            mostrarAlerta('concilAlert', `⚠️ ${data.message}`, 'error');
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarAlerta('concilAlert', 'Error de red al intentar conciliar.', 'error');
+        mostrarToast('Error de red al intentar conciliar.', 'error');
         console.error("Error conciliando:", e);
     }
 }
@@ -97,7 +104,12 @@ export async function conciliarMasivo() {
     
     if (referencias.length === 0) return;
     
-    if (!confirm(`¿Estás seguro de registrar manualmente los ${referencias.length} pagos seleccionados?`)) return;
+    // 👈 Reemplazamos el confirm nativo por el modal asíncrono
+    const confirmado = await confirmarAccionGlobal(
+        'Conciliación Masiva',
+        `¿Estás seguro de registrar manualmente los ${referencias.length} pagos seleccionados?`
+    );
+    if (!confirmado) return;
     
     const btnMasivo = document.getElementById('btnConciliarMasivo');
     btnMasivo.innerText = 'Procesando...';
@@ -107,18 +119,19 @@ export async function conciliarMasivo() {
         const res = await fetch(`${API_BASE_URL}/api/conciliaciones/manual/masivo`, { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ referencias }) // Enviamos el array
+            body: JSON.stringify({ referencias })
         });
         const data = await res.json();
         
         if (data.success) {
-            mostrarAlerta('concilAlert', `✅ ${data.message}`, 'success');
+            // 👈 Reemplazamos mostrarAlerta por mostrarToast
+            mostrarToast(data.message, 'success');
             cargarConciliaciones();
         } else {
-            mostrarAlerta('concilAlert', `⚠️ ${data.message}`, 'error');
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarAlerta('concilAlert', 'Error de red al intentar conciliar masivamente.', 'error');
+        mostrarToast('Error de red al intentar conciliar masivamente.', 'error');
         console.error("Error conciliando masivo:", e);
     } finally {
         verificarSeleccionMasiva();

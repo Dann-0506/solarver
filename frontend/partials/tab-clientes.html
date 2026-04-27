@@ -1,15 +1,9 @@
-<!--
-  Archivo: frontend/partials/tab-clientes.html
-  Uso: innerHTML via loadPartial() en admin.js y empleado.js
--->
 <div class="section-header">
   <h3>Directorio de Clientes</h3>
   <button class="btn-primary" style="padding:9px 18px;font-size:.82rem" onclick="abrirModalCliente('crear')">
     + Nuevo cliente
   </button>
 </div>
-
-<div id="tablaAlert" style="display:none;padding:12px 16px;border-radius:8px;font-size:.84rem;font-weight:500;margin-bottom:16px;border-left:3px solid"></div>
 
 <div class="search-bar">
   <div class="search-wrap">
@@ -50,7 +44,6 @@
   </div>
 </div>
 
-<!-- Modal crear/editar cliente -->
 <div class="modal-overlay" id="clienteModal">
   <div class="modal">
     <button class="modal-close" onclick="cerrarModalCliente()">
@@ -58,7 +51,7 @@
     </button>
     <h3 id="clienteModalTitulo">Nuevo cliente</h3>
     <p class="sub">Completa los campos obligatorios.</p>
-    <div id="clienteModalAlert" style="display:none;padding:10px 14px;border-radius:8px;font-size:.82rem;font-weight:500;margin-bottom:14px;border-left:3px solid"></div>
+    
     <div class="form-grid">
       <div class="form-group"><label>Nombre completo *</label><input type="text" id="cNombre" placeholder="Ej. María García López"></div>
       <div class="form-group"><label>Identificación oficial *</label><input type="text" id="cIdentificacion" placeholder="INE / Pasaporte"></div>
@@ -97,25 +90,6 @@
   </div>
 </div>
 
-<!-- Modal eliminar cliente -->
-<div class="modal-overlay" id="deleteClienteModal">
-  <div class="modal" style="max-width:420px;text-align:center">
-    <div style="width:56px;height:56px;border-radius:50%;background:#FDECEA;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
-      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-    </div>
-    <h3 style="margin-bottom:8px">Eliminar cliente</h3>
-    <p class="sub" style="margin-bottom:16px">¿Estás seguro que deseas eliminar a <strong id="deleteClienteNombre"></strong>? Se eliminarán también sus deudas y pagos.</p>
-    <div id="deleteClienteDeudaAlert" style="display:none;padding:10px 14px;border-radius:8px;font-size:.82rem;font-weight:500;margin-bottom:16px;background:#FEF9EC;color:#E67E22;border-left:3px solid #E67E22;text-align:left">
-      No se puede eliminar este cliente porque tiene una <strong>deuda pendiente</strong>.
-    </div>
-    <div class="modal-footer" style="justify-content:center">
-      <button class="btn-secondary" onclick="cerrarDeleteClienteModal()">Cancelar</button>
-      <button class="btn-primary" id="btnConfirmarEliminarCliente" style="background:linear-gradient(135deg,var(--error),#c0392b)" onclick="ejecutarEliminarCliente()">Sí, eliminar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal perfil del cliente -->
 <div class="modal-overlay" id="profileModal">
   <div class="modal" style="max-width:560px">
     <button class="modal-close" onclick="cerrarPerfilModal()">

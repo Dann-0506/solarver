@@ -31,73 +31,87 @@ export async function cargarStatsDashboard() {
 }
 
 export async function cargarListasDashboard() {
-    // 1. Cargar "Clientes con deuda próxima"
-    try {
-        const resC = await fetch(`${API_BASE_URL}/api/clientes`);
-        const dataC = await resC.json();
-        const divDeuda = document.getElementById('dashClientesDeuda');
-        
-        if (dataC.success && dataC.clientes) {
-            const pendientes = dataC.clientes
-                .filter(c => (c.Estatus || '').toLowerCase() !== 'pagado' && parseFloat(c.Saldo_Pendiente) > 0)
-                .slice(0, 5);
-
-            if (pendientes.length > 0) {
-                divDeuda.innerHTML = pendientes.map(c => `
-                    <div style="display:flex; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border);">
-                        <div>
-                            <div style="font-weight:600; font-size:.85rem; font-family:'Sora', sans-serif;">${c.Nombre_Completo}</div>
-                            <div style="font-size:.75rem; color:var(--muted); margin-top:2px;">Día de pago: <span style="font-weight:600;color:var(--blue-d)">${c.Fecha_Pago}</span></div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="color:var(--error); font-weight:700; font-size:.85rem;">$${parseFloat(c.Saldo_Pendiente).toLocaleString()}</div>
-                            <div style="font-size:.7rem; color:var(--muted); margin-top:2px;">${(c.Estatus || 'Pendiente').toUpperCase()}</div>
-                        </div>
-                    </div>
-                `).join('');
-                divDeuda.lastElementChild.style.borderBottom = 'none';
-            } else {
-                divDeuda.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">No hay deudas próximas.</div>';
+    // 1. Actividad Reciente - Aumentado a 9 registros
+    const contenedorHistorial = document.getElementById('dashHistorial');
+    if (contenedorHistorial) {
+        try {
+            const resH = await fetch(`${API_BASE_URL}/api/historial`);
+            const dataH = await resH.json();
+            if (dataH.success && dataH.historial) {
+                const ultimos = dataH.historial.slice(0, 9); // 👈 Aumentado a 9
+                if (ultimos.length > 0) {
+                    contenedorHistorial.innerHTML = ultimos.map(r => {
+                        const colorAccion = r.Accion.includes('ELIMINAR') ? 'var(--error)' : 
+                                            r.Accion.includes('PAGO') || r.Accion.includes('CREAR') ? 'var(--success)' : 'var(--blue-d)';
+                        return `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 10px; border-bottom:1px solid var(--border)">
+                                <div style="max-width: 75%;">
+                                    <div style="font-weight:600; font-size:.84rem; color:var(--text); line-height:1.2">${r.Descripcion}</div>
+                                    <div style="font-size:.72rem; color:var(--muted); margin-top:3px;">
+                                        <span style="color:${colorAccion}; font-weight:700; text-transform:uppercase; font-size:.65rem">${r.Accion.replace(/_/g, ' ')}</span> 
+                                        • ${r.Usuario}
+                                    </div>
+                                </div>
+                                <div style="text-align:right; font-size:.72rem; color:var(--muted); white-space:nowrap; min-width:75px;">
+                                    ${r.Fecha.split(' ')[0]}<br>${r.Fecha.split(' ')[1] || ''}
+                                </div>
+                            </div>`;
+                    }).join('');
+                    if (contenedorHistorial.lastElementChild) contenedorHistorial.lastElementChild.style.borderBottom = 'none';
+                } else {
+                    contenedorHistorial.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Sin actividad.</div>';
+                }
             }
-        }
-    } catch (e) {
-        if (document.getElementById('dashClientesDeuda')) {
-            document.getElementById('dashClientesDeuda').innerHTML = '<div style="text-align:center;padding:24px;color:var(--error)">Error al cargar clientes.</div>';
-        }
+        } catch (e) { contenedorHistorial.innerHTML = '<div style="text-align:center;padding:40px;color:var(--error)">Error de carga.</div>'; }
     }
 
-    // 2. Cargar "Recordatorios recientes"
-    try {
-        const resR = await fetch(`${API_BASE_URL}/api/recordatorios/historial`); 
-        const dataR = await resR.json();
-        const divRec = document.getElementById('dashRecordatorios');
-        
-        if (dataR.success && dataR.historial) {
-            const recientes = dataR.historial.slice(0, 5);
-            
-            if (recientes.length > 0) {
-                divRec.innerHTML = recientes.map(r => `
-                    <div style="display:flex; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border);">
-                        <div>
-                            <div style="font-weight:600; font-size:.85rem; font-family:'Sora', sans-serif;">${r.Nombre_Cliente || 'Cliente'}</div>
-                            <div style="font-size:.75rem; color:var(--muted); margin-top:2px;">Por: ${r.Nombre_Usuario || 'Sistema'}</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:.75rem; color:var(--muted);">${r.Fecha}</div>
-                            <div style="font-size:.7rem; color:var(--success); font-weight:600; margin-top:2px;">Enviado</div>
-                        </div>
-                    </div>
-                `).join('');
-                divRec.lastElementChild.style.borderBottom = 'none';
-            } else {
-                divRec.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">No hay recordatorios recientes.</div>';
+    // 2. Deudas Próximas - Limitado a 2 registros
+    const divDeuda = document.getElementById('dashClientesDeuda');
+    if (divDeuda) {
+        try {
+            const resC = await fetch(`${API_BASE_URL}/api/clientes`);
+            const dataC = await resC.json();
+            if (dataC.success && dataC.clientes) {
+                const pendientes = dataC.clientes
+                    .filter(c => (c.Estatus || '').toLowerCase() !== 'pagado' && parseFloat(c.Saldo_Pendiente) > 0)
+                    .slice(0, 2); // 👈 Limitado a 2
+
+                if (pendientes.length > 0) {
+                    divDeuda.innerHTML = pendientes.map(c => `
+                        <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border);">
+                            <div>
+                                <div style="font-weight:600; font-size:.85rem;">${c.Nombre_Completo}</div>
+                                <div style="font-size:.75rem; color:var(--muted);">Día: ${c.Fecha_Pago}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="color:var(--error); font-weight:700;">$${parseFloat(c.Saldo_Pendiente).toLocaleString()}</div>
+                            </div>
+                        </div>`).join('');
+                    if (divDeuda.lastElementChild) divDeuda.lastElementChild.style.borderBottom = 'none';
+                } else { divDeuda.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Sin deudas.</div>'; }
             }
-        } else {
-             if(divRec) divRec.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">No hay recordatorios recientes.</div>';
-        }
-    } catch (e) {
-        if(document.getElementById('dashRecordatorios')){
-            document.getElementById('dashRecordatorios').innerHTML = '<div style="text-align:center;padding:24px;color:var(--error)">Error al cargar recordatorios.</div>';
-        }
+        } catch (e) { divDeuda.innerHTML = '<div style="text-align:center;padding:20px;color:var(--error)">Error.</div>'; }
+    }
+
+    // 3. Recordatorios - Limitado a 2 registros
+    const divRec = document.getElementById('dashRecordatorios');
+    if (divRec) {
+        try {
+            const resR = await fetch(`${API_BASE_URL}/api/recordatorios/historial`); 
+            const dataR = await resR.json();
+            const recordatorios = (dataR.recordatorios || []).slice(0, 2); // 👈 Limitado a 2
+            
+            if (recordatorios.length > 0) {
+                divRec.innerHTML = recordatorios.map(r => `
+                    <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border);">
+                        <div>
+                            <div style="font-weight:600; font-size:.85rem;">${r.Cliente}</div>
+                            <div style="font-size:.75rem; color:var(--muted);">${r.Canal}</div>
+                        </div>
+                        <div style="text-align:right; font-size:.75rem; color:var(--muted);">${r.Fecha_Envio.split(' ')[0]}</div>
+                    </div>`).join('');
+                if (divRec.lastElementChild) divRec.lastElementChild.style.borderBottom = 'none';
+            } else { divRec.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Sin recordatorios.</div>'; }
+        } catch (e) { divRec.innerHTML = '<div style="text-align:center;padding:20px;color:var(--error)">Error.</div>'; }
     }
 }

@@ -5,7 +5,8 @@
 
 import { API_BASE_URL } from '../core/api.js';
 import { getUsuario } from '../core/auth.js';
-import { getIniciales, mostrarAlerta, ocultarAlerta } from '../core/utils.js';
+// 👈 Importamos nuestras nuevas utilidades
+import { getIniciales, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
 // ── Cargar roles en los selects ────────────────────────────
 export async function cargarRoles() {
@@ -94,8 +95,9 @@ export async function crearUsuario() {
     const password = document.getElementById('uPassword').value.trim();
     const id_rol   = document.getElementById('uRol').value;
 
+    // 👈 Reemplazamos mostrarAlerta por mostrarToast
     if (!nombre || !username || !correo || !password || !id_rol) {
-        mostrarAlerta('modalAlert', 'Completa todos los campos obligatorios.', 'error');
+        mostrarToast('Completa todos los campos obligatorios.', 'error');
         return;
     }
 
@@ -112,55 +114,41 @@ export async function crearUsuario() {
         const data = await res.json();
         if (data.success) {
             cerrarModalUsuario();
-            mostrarAlerta('userAlert', '✅ Usuario creado correctamente.', 'success');
+            mostrarToast('Usuario creado correctamente.', 'success'); // 👈
             cargarUsuarios();
         } else {
-            mostrarAlerta('modalAlert', data.message, 'error');
+            mostrarToast(data.message, 'error'); // 👈
         }
     } catch (e) {
-        mostrarAlerta('modalAlert', 'No se pudo conectar con el servidor.', 'error');
+        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
     } finally {
         btn.textContent = 'Crear usuario';
         btn.disabled    = false;
     }
 }
 
-// ── Eliminar usuario ───────────────────────────────────────
-let _deleteId = null;
+// ── Eliminar usuario (Lógica Unificada) ────────────────────
+export async function confirmarEliminarUsuario(id, nombre) {
+    // 👈 Modal dinámico global
+    const confirmado = await confirmarAccionGlobal(
+        'Eliminar Usuario',
+        `¿Estás seguro de que deseas eliminar permanentemente al usuario ${nombre}?`
+    );
 
-export function confirmarEliminarUsuario(id, nombre) {
-    _deleteId = id;
-    const el = document.getElementById('deleteNombre');
-    if (el) el.textContent = nombre;
-    document.getElementById('deleteModal').classList.add('open');
-}
+    if (!confirmado) return;
 
-export function cerrarDeleteModal() {
-    _deleteId = null;
-    document.getElementById('deleteModal').classList.remove('open');
-}
-
-export async function ejecutarEliminar() {
-    if (!_deleteId) return;
-    const btn = document.getElementById('btnConfirmarEliminar');
-    btn.textContent = 'Eliminando...';
-    btn.disabled    = true;
     try {
-        const res  = await fetch(`${API_BASE_URL}/api/usuarios/${_deleteId}`, { method: 'DELETE' });
+        const res  = await fetch(`${API_BASE_URL}/api/usuarios/${id}`, { method: 'DELETE' });
         const data = await res.json();
-        cerrarDeleteModal();
+        
         if (data.success) {
-            mostrarAlerta('userAlert', '✅ Usuario eliminado correctamente.', 'success');
+            mostrarToast('Usuario eliminado correctamente.', 'success'); // 👈
             cargarUsuarios();
         } else {
-            mostrarAlerta('userAlert', data.message, 'error');
+            mostrarToast(data.message, 'error'); // 👈
         }
     } catch (e) {
-        cerrarDeleteModal();
-        mostrarAlerta('userAlert', 'No se pudo conectar con el servidor.', 'error');
-    } finally {
-        btn.textContent = 'Sí, eliminar';
-        btn.disabled    = false;
+        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
     }
 }
 
@@ -171,7 +159,7 @@ export function abrirEditarUsuario(id, nombre, username, correo, idRol) {
     document.getElementById('eUsername').value = username;
     document.getElementById('eCorreo').value   = correo;
     document.getElementById('ePassword').value = '';
-    ocultarAlerta('editModalAlert');
+    
     // Reusar roles ya cargados en el select de creación
     const selectE = document.getElementById('eRol');
     const selectC = document.getElementById('uRol');
@@ -194,8 +182,9 @@ export async function guardarEdicion() {
     const id_rol   = document.getElementById('eRol').value;
     const password = document.getElementById('ePassword').value.trim();
 
+    // 👈 Reemplazamos mostrarAlerta
     if (!nombre || !username || !correo || !id_rol) {
-        mostrarAlerta('editModalAlert', 'Completa todos los campos obligatorios.', 'error');
+        mostrarToast('Completa todos los campos obligatorios.', 'error');
         return;
     }
 
@@ -215,13 +204,13 @@ export async function guardarEdicion() {
         const data = await res.json();
         if (data.success) {
             cerrarEditarModal();
-            mostrarAlerta('userAlert', '✅ Usuario actualizado correctamente.', 'success');
+            mostrarToast('Usuario actualizado correctamente.', 'success'); // 👈
             cargarUsuarios();
         } else {
-            mostrarAlerta('editModalAlert', data.message, 'error');
+            mostrarToast(data.message, 'error'); // 👈
         }
     } catch (e) {
-        mostrarAlerta('editModalAlert', 'No se pudo conectar con el servidor.', 'error');
+        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
     } finally {
         btn.textContent = 'Guardar cambios';
         btn.disabled    = false;
@@ -230,7 +219,6 @@ export async function guardarEdicion() {
 
 // ── Modales ────────────────────────────────────────────────
 export function abrirModalUsuario() {
-    ocultarAlerta('modalAlert');
     ['uNombre', 'uUsername', 'uCorreo', 'uPassword'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
