@@ -33,8 +33,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const usuario = getUsuario();
     if (!usuario) { window.location.href = '../pages/login.html'; return; }
 
-    await loadSharedTabs();
+    // 1. Cargamos el HTML de los tabs
+    await loadSharedTabs(); 
 
+    // 2. 👈 PEQUEÑA PAUSA TÉCNICA: Permite al navegador procesar el nuevo HTML
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     document.getElementById('sidebarNombre').textContent = usuario.nombre;
     actualizarAvatar();
 
@@ -46,10 +50,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
-    changeTab('dashboard');
+    
+    // 3. Iniciamos el dashboard de forma asíncrona
+    await changeTab('dashboard'); 
+    
+    cargarRoles();
+    setInterval(verificarSesion, 60000);
 });
 
-function changeTab(name) {
+async function changeTab(name) {
     TABS.forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         if (el) el.style.display = t === name ? 'block' : 'none';
@@ -59,9 +68,13 @@ function changeTab(name) {
         item.classList.toggle('active', item.getAttribute('data-tab') === name)
     );
 
-    if (name === 'dashboard')      { cargarStatsDashboard(); cargarListasDashboard(); }
+    // 👈 CAMBIO: Await en las funciones de datos
+    if (name === 'dashboard') { 
+        await cargarStatsDashboard(); 
+        await cargarListasDashboard(); 
+    }
     if (name === 'clientes')       { cargarClientes(); cargarStats(); }
-    if (name === 'pagos')          cargarPagos();
+    if (name === 'pagos')          cargarPagos('pagosTableBody', 'pagosInfo', 'pagosBtns');
     if (name === 'notificaciones') { cargarClientesRec(); cargarHistorialRec(); }
     if (name === 'perfil')         inicializarPerfil();
 }

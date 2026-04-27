@@ -6,28 +6,61 @@
 import { API_BASE_URL } from './api.js';
 
 export async function cargarStatsDashboard() {
+    // Reintento para asegurar que el HTML se haya inyectado
+    let intentos = 0;
+    while (!document.getElementById('statActivos') && intentos < 5) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+        intentos++;
+    }
+    if (!document.getElementById('statActivos')) return;
+
     try {
+        // 1. Obtener datos de Clientes y Pagos en paralelo
         const [resC, resP] = await Promise.all([
             fetch(`${API_BASE_URL}/api/clientes`),
             fetch(`${API_BASE_URL}/api/pagos`)
         ]);
-        const dc = await resC.json();
-        const dp = await resP.json();
-        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-        
-        if (dc.success) {
-            set('statClientes',  dc.clientes.length);
-            set('statAtrasadas', dc.clientes.filter(c => (c.Estatus||'').toLowerCase() === 'atrasado').length);
+
+        const dataC = await resC.json();
+        const dataP = await resP.json();
+
+        if (dataC.success && dataP.success) {
+            const clientes = dataC.clientes;
+            const pagos = dataP.pagos;
+
+            // --- Cálculos de Conteo ---
+            const activos    = clientes.filter(c => (c.Estado || '').toLowerCase() === 'activo').length;
+            const pendientes = clientes.filter(c => (c.Estatus || '').toLowerCase() === 'pendiente').length;
+            const atrasados  = clientes.filter(c => (c.Estatus || '').toLowerCase() === 'atrasado').length;
+
+            // --- Cálculo de Cobros (Mes Actual) ---
+            const hoy = new Date();
+            const esteMes = hoy.getMonth();
+            const esteAnio = hoy.getFullYear();
+
+            const totalMonto = pagos
+                .filter(p => {
+                    const f = new Date(p.Fecha_Pago);
+                    return f.getMonth() === esteMes && f.getFullYear() === esteAnio;
+                })
+                .reduce((sum, p) => sum + (parseFloat(p.Monto) || 0), 0);
+
+            const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalMonto);
+
+            // --- Actualización segura del DOM ---
+            const safeUpdate = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            };
+
+            safeUpdate('statActivos', activos);
+            safeUpdate('statPendientes', pendientes);
+            safeUpdate('statAtrasados', atrasados);
+            safeUpdate('statCobros', fmt);
         }
-        if (dp.success) {
-            const ingresos = dp.pagos.reduce((s, p) => s + (parseFloat(p.Monto) || 0), 0);
-            const fmt = ingresos >= 1000000 ? '$'+(ingresos/1000000).toFixed(1)+'M'
-                      : ingresos >= 1000    ? '$'+(ingresos/1000).toFixed(0)+'k'
-                      : '$'+ingresos.toLocaleString();
-            set('statPagos',    dp.pagos.length);
-            set('statIngresos', fmt);
-        }
-    } catch(e) { console.error('Stats error:', e); }
+    } catch (e) {
+        console.error("Error cargando estadísticas:", e);
+    }
 }
 
 export async function cargarListasDashboard() {
