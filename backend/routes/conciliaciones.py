@@ -1,14 +1,28 @@
-# Archivo: backend/routes/conciliaciones.py
-# Rutas específicas para conciliaciones manuales de pagos, con validación de referencias y actualización de estatus en la base de datos.
+"""Rutas para conciliación manual de pagos.
 
-from flask import Blueprint, request, jsonify
+Expone los endpoints REST para consultar referencias pendientes de
+conciliación y procesarlas de forma individual o masiva.
+"""
+
+from __future__ import annotations
+
+from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras
 
 conciliaciones_bp = Blueprint('conciliaciones', __name__)
 
+
 @conciliaciones_bp.route('/conciliaciones/pendientes', methods=['GET'])
-def get_pendientes():
+def get_pendientes() -> tuple[Response, int]:
+    """Retorna las referencias de pago con estatus 'Pendiente'.
+
+    Returns:
+        Tupla (respuesta JSON, 200) con lista de referencias pendientes
+        enriquecidas con datos del cliente y saldo de deuda. La fecha de
+        generación se formatea como DD/MM/YYYY HH:MM. Retorna 500 ante
+        error de base de datos.
+    """
     conn = cursor = None
     try:
         conn = get_connection()
@@ -35,14 +49,28 @@ def get_pendientes():
         if cursor: cursor.close()
         if conn: conn.close()
 
+
 @conciliaciones_bp.route('/conciliaciones/manual/<int:id_referencia>', methods=['POST'])
-def conciliar_manual(id_referencia):
+def conciliar_manual(id_referencia: int) -> tuple[Response, int]:
+    """Concilia manualmente una referencia de pago pendiente.
+
+    Valida que la referencia exista y esté pendiente, registra el pago
+    con folio ``FOL-MAN-N``, marca la referencia como ``Conciliado_Manual``
+    y actualiza el saldo de la deuda.
+
+    Args:
+        id_referencia: ID de la referencia a conciliar.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 200 en éxito; 404 si
+        la referencia no existe o ya fue procesada; 500 ante error de
+        base de datos.
+    """
     conn = cursor = None
     try:
         conn = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
-        # 1. Validar referencia
         cursor.execute('SELECT * FROM "REFERENCIAPAGO" WHERE "Id_Referencia" = %s AND "Estado" = %s', (id_referencia, 'Pendiente'))
         ref = cursor.fetchone()
         if not ref:
@@ -51,7 +79,6 @@ def conciliar_manual(id_referencia):
         monto = float(ref['Monto_Esperado'])
         id_deuda = ref['Id_Deuda']
 
-        # 2. Registrar el pago y cambiar estatus
         cursor.execute("SELECT nextval('folio_seq') AS num")
         folio = f"FOL-MAN-{cursor.fetchone()['num']}"
 
@@ -62,7 +89,6 @@ def conciliar_manual(id_referencia):
 
         cursor.execute('UPDATE "REFERENCIAPAGO" SET "Estado" = %s WHERE "Id_Referencia" = %s', ('Conciliado_Manual', id_referencia))
 
-        # 3. Actualizar saldo
         cursor.execute('SELECT "Saldo_Pendiente" FROM "DEUDA" WHERE "Id_Deuda"=%s', (id_deuda,))
         deuda = cursor.fetchone()
         nuevo_saldo = max(float(deuda['Saldo_Pendiente']) - monto, 0)
@@ -82,7 +108,18 @@ def conciliar_manual(id_referencia):
 
 
 @conciliaciones_bp.route('/conciliaciones/manual/masivo', methods=['POST'])
-def conciliar_masivo():
+def conciliar_masivo() -> tuple[Response, int]:
+    """Concilia masivamente una lista de referencias de pago pendientes.
+
+    Procesa cada referencia de la lista recibida; omite silenciosamente
+    las que no existan o ya estén procesadas. Aplica la misma lógica que
+    ``conciliar_manual`` por cada referencia válida.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 200 con el conteo de
+        referencias conciliadas; 400 si no se enviaron referencias; 500
+        ante error de base de datos.
+    """
     data = request.get_json()
     referencias = data.get('referencias', [])
     

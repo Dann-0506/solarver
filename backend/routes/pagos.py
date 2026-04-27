@@ -1,16 +1,31 @@
-# Archivo: backend/routes/pagos.py
-# Rutas para gestión de pagos, generación de folios y actualización de estatus de deuda
+"""Rutas para gestión de pagos.
 
-from flask import Blueprint, request, jsonify
+Expone los endpoints REST para consulta, registro de pagos y
+generación de folios. Incluye la lógica de actualización de saldo
+y estatus de deuda tras cada pago.
+"""
+
+from __future__ import annotations
+
+from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras
 from datetime import datetime
 
 pagos_bp = Blueprint('pagos', __name__)
 
-# ── GET /api/pagos ─────────────────────────────────────────
+
 @pagos_bp.route('/pagos', methods=['GET'])
-def get_pagos():
+def get_pagos() -> tuple[Response, int]:
+    """Retorna los últimos 200 pagos del sistema con datos de cliente y deuda.
+
+    Los pagos sin deuda asignada se muestran como huérfanos con un aviso
+    en el campo Nombre_Completo.
+
+    Returns:
+        Tupla (respuesta JSON, 200) con lista de pagos y fecha formateada
+        como DD/MM/YYYY HH:MM. Retorna 500 ante error de base de datos.
+    """
     conn = cursor = None
     try:
         conn   = get_connection()
@@ -43,9 +58,17 @@ def get_pagos():
         if conn:   conn.close()
 
 
-# ── GET /api/pagos/siguiente-folio ────────────────────────
 @pagos_bp.route('/pagos/siguiente-folio', methods=['GET'])
-def siguiente_folio():
+def siguiente_folio() -> tuple[Response, int]:
+    """Genera y reserva el siguiente número de folio de la secuencia.
+
+    Consume un número de la secuencia ``folio_seq`` de PostgreSQL, que es
+    atómica y evita duplicados bajo concurrencia.
+
+    Returns:
+        Tupla (respuesta JSON, 200) con el folio generado en formato
+        ``FOL-N``. Retorna 500 ante error de base de datos.
+    """
     conn = cursor = None
     try:
         conn   = get_connection()
@@ -63,9 +86,21 @@ def siguiente_folio():
         if conn:   conn.close()
 
 
-# ── POST /api/pagos ────────────────────────────────────────
 @pagos_bp.route('/pagos', methods=['POST'])
-def registrar_pago():
+def registrar_pago() -> tuple[Response, int]:
+    """Registra un nuevo pago y actualiza el saldo y estatus de la deuda.
+
+    Calcula el total pagado en el periodo vigente para determinar si el
+    estatus de la deuda pasa a 'pagado', 'atrasado' o se mantiene
+    'pendiente'. Genera un folio con la secuencia atómica de PostgreSQL.
+    Registra el evento en el historial si se provee id_usuario.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 201 en éxito con folio,
+        ID de pago, nuevo saldo, nuevo estatus y advertencia si el monto
+        supera el saldo; 400 si faltan campos o el monto es inválido; 404
+        si el cliente no tiene deuda; 500 ante error de base de datos.
+    """
     data        = request.get_json()
     id_cliente  = data.get('id_cliente')
     monto       = float(data.get('monto', 0))

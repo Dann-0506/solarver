@@ -1,7 +1,13 @@
-# Archivo: backend/routes/usuarios.py
-# Rutas para gestión de usuarios y roles.
+"""Rutas para gestión de usuarios y roles.
 
-from flask import Blueprint, request, jsonify, current_app
+Expone los endpoints REST para consultar, crear, editar y eliminar
+usuarios del sistema, así como para actualizar el perfil y cambiar
+la contraseña del usuario autenticado.
+"""
+
+from __future__ import annotations
+
+from flask import Blueprint, request, jsonify, current_app, Response
 from db import get_connection
 import psycopg2.extras
 import bcrypt
@@ -13,9 +19,15 @@ usuarios_bp = Blueprint('usuarios', __name__)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
-# ── GET /api/usuarios ──────────────────────────────────────
+
 @usuarios_bp.route('/usuarios', methods=['GET'])
-def get_usuarios():
+def get_usuarios() -> tuple[Response, int]:
+    """Retorna la lista de usuarios del sistema con su rol asignado.
+
+    Returns:
+        Tupla (respuesta JSON, 200) con lista de usuarios. Retorna 500
+        ante error de base de datos.
+    """
     conn = cursor = None
     try:
         conn   = get_connection()
@@ -36,9 +48,14 @@ def get_usuarios():
         if conn:   conn.close()
 
 
-# ── GET /api/roles ─────────────────────────────────────────
 @usuarios_bp.route('/roles', methods=['GET'])
-def get_roles():
+def get_roles() -> tuple[Response, int]:
+    """Retorna la lista de roles disponibles en el sistema.
+
+    Returns:
+        Tupla (respuesta JSON, 200) con lista de roles. Retorna 500 ante
+        error de base de datos.
+    """
     conn = cursor = None
     try:
         conn   = get_connection()
@@ -53,9 +70,19 @@ def get_roles():
         if conn:   conn.close()
 
 
-# ── POST /api/usuarios ─────────────────────────────────────
 @usuarios_bp.route('/usuarios', methods=['POST'])
-def crear_usuario():
+def crear_usuario() -> tuple[Response, int]:
+    """Crea un nuevo usuario con contraseña hasheada en bcrypt.
+
+    Valida formato de correo, verifica unicidad de username y correo, y
+    almacena la contraseña hasheada. Nunca guarda contraseñas en texto
+    plano.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 201 con el ID del
+        usuario creado; 400 si faltan campos o el correo es inválido; 409
+        si el username o correo ya existen; 500 ante error de base de datos.
+    """
     data     = request.get_json()
     nombre   = data.get('nombre', '').strip()
     username = data.get('username', '').strip()
@@ -98,9 +125,23 @@ def crear_usuario():
         if conn:   conn.close()
 
 
-# ── PUT /api/usuarios/<id>  y  DELETE /api/usuarios/<id> ──
 @usuarios_bp.route('/usuarios/<int:id_usuario>', methods=['PUT', 'DELETE'])
-def gestionar_usuario(id_usuario):
+def gestionar_usuario(id_usuario: int) -> tuple[Response, int]:
+    """Edita o elimina un usuario según el método HTTP de la petición.
+
+    DELETE: elimina el usuario si existe.
+    PUT: actualiza los datos del usuario; si se envía ``password`` la
+    rehashea con bcrypt antes de guardarla.
+
+    Args:
+        id_usuario: ID del usuario a gestionar.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 200 en éxito; 400 si
+        faltan campos obligatorios (PUT); 404 si el usuario no existe; 409
+        si el nuevo username o correo ya están en uso (PUT); 500 ante error
+        de base de datos.
+    """
     if request.method == 'DELETE':
         conn = cursor = None
         try:
@@ -120,7 +161,6 @@ def gestionar_usuario(id_usuario):
             if cursor: cursor.close()
             if conn:   conn.close()
 
-    # PUT
     data     = request.get_json()
     nombre   = data.get('nombre', '').strip()
     username = data.get('username', '').strip()
@@ -168,13 +208,37 @@ def gestionar_usuario(id_usuario):
         if cursor: cursor.close()
         if conn:   conn.close()
 
-# Función auxiliar para validar extensiones de archivos
-def archivo_permitido(filename):
+
+def archivo_permitido(filename: str) -> bool:
+    """Verifica si la extensión del archivo está en la lista de extensiones permitidas.
+
+    Args:
+        filename: Nombre del archivo incluyendo su extensión.
+
+    Returns:
+        True si la extensión (en minúsculas) está en ALLOWED_EXTENSIONS;
+        False en caso contrario o si el nombre no contiene punto.
+    """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# ── PUT /api/usuarios/perfil/<id> ─────────────────────────────
+
 @usuarios_bp.route('/usuarios/perfil/<int:id_usuario>', methods=['PUT'])
-def actualizar_perfil(id_usuario):
+def actualizar_perfil(id_usuario: int) -> tuple[Response, int]:
+    """Actualiza el nombre, username y opcionalmente la foto de perfil.
+
+    Recibe un ``multipart/form-data`` con los campos ``nombre``,
+    ``username`` y, de forma opcional, ``foto`` (PNG, JPG o JPEG). La
+    imagen se guarda en ``static/uploads/profiles/`` con el nombre
+    ``perfil_<id>.ext``.
+
+    Args:
+        id_usuario: ID del usuario cuyo perfil se actualiza.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 200 en éxito con los
+        datos actualizados; 400 si faltan campos obligatorios; 500 ante
+        error de base de datos o de sistema de archivos.
+    """
     nombre  = request.form.get('nombre', '').strip()
     username = request.form.get('username', '').strip()
     foto_url = None
@@ -231,7 +295,22 @@ def actualizar_perfil(id_usuario):
 
 
 @usuarios_bp.route('/usuarios/perfil/<int:id_usuario>/password', methods=['PUT'])
-def actualizar_password_perfil(id_usuario):
+def actualizar_password_perfil(id_usuario: int) -> tuple[Response, int]:
+    """Cambia la contraseña del usuario tras verificar la contraseña actual.
+
+    Verifica la contraseña actual con bcrypt. Si la verificación falla por
+    ValueError (contraseña sin hash), intenta la comparación en texto plano
+    como fallback. La nueva contraseña se almacena siempre hasheada.
+
+    Args:
+        id_usuario: ID del usuario que cambia su contraseña.
+
+    Returns:
+        Tupla (respuesta JSON, código HTTP). Código 200 en éxito; 400 si
+        faltan datos; 401 si la contraseña actual es incorrecta; 404 si el
+        usuario no existe; 500 ante error de base de datos.
+    """
+    # FIXME: el fallback a texto plano en caso de ValueError permite autenticar contraseñas sin hash; migrar a bcrypt puro
     data = request.get_json(silent=True) or {}
     pass_actual = data.get('password_actual')
     pass_nueva = data.get('password_nueva')
