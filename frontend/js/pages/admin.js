@@ -1,6 +1,26 @@
 /**
- * Archivo: frontend/js/pages/admin.js
- * Propósito: Controlador del dashboard Administrador con exposición global.
+ * Entry point de la vista de dashboard para el rol Administrador.
+ *
+ * Inicializa la sesión, carga los tabs compartidos y despacha
+ * la lógica de cada sección a sus módulos correspondientes.
+ * Expone funciones de módulos al ámbito global para su uso desde
+ * atributos onclick en el HTML.
+ *
+ * Módulos importados:
+ *   - core/auth.js: verificación de sesión y cierre de sesión.
+ *   - core/api.js: URL base de la API REST.
+ *   - core/utils.js: utilidades generales (iniciales de nombre).
+ *   - core/partials.js: carga de tabs HTML compartidos.
+ *   - core/dashboard_utils.js: carga de estadísticas y listas del dashboard.
+ *   - modules/usuarios.js: gestión de usuarios del sistema.
+ *   - modules/clientes.js: gestión de clientes.
+ *   - modules/pagos.js: gestión de pagos.
+ *   - modules/conciliaciones.js: conciliación masiva de pagos.
+ *   - modules/recordatorios.js: envío de recordatorios a clientes.
+ *   - modules/reportes.js: generación y descarga de reportes.
+ *   - modules/historial.js: consulta de historial de operaciones.
+ *   - modules/perfil.js: gestión del perfil del usuario.
+ *   - modules/respaldos.js: gestión de respaldos de la base de datos.
  */
 
 import { getUsuario, cerrarSesion } from '../core/auth.js';
@@ -9,8 +29,7 @@ import { getIniciales } from '../core/utils.js';
 import { loadSharedTabs } from '../core/partials.js';
 import { cargarStatsDashboard, cargarListasDashboard } from '../core/dashboard_utils.js';
 
-// Importaciones de módulos
-import { 
+import {
     cargarRoles, cargarUsuarios, crearUsuario, 
     abrirModalUsuario, cerrarModalUsuario, 
     abrirEditarUsuario, cerrarEditarModal, guardarEdicion 
@@ -77,19 +96,12 @@ window.cargarHistorial = cargarHistorial;
 
 // Respaldos
 window.crearRespaldo = crearRespaldo;
+window.confirmarRestauracion = confirmarRestauracion;
+window.confirmarEliminarRespaldo = confirmarEliminarRespaldo;
+window.descargarRespaldo = descargarRespaldo;
 window.abrirConfigRespaldos = abrirConfigRespaldos;
 window.cerrarConfigRespaldos = cerrarConfigRespaldos;
 window.guardarConfigRespaldos = guardarConfigRespaldos;
-
-window.crearRespaldo = crearRespaldo;
-window.confirmarRestauracion = confirmarRestauracion;     // 👈 Necesaria para la tabla
-window.confirmarEliminarRespaldo = confirmarEliminarRespaldo; // 👈 Necesaria para la tabla
-window.descargarRespaldo = descargarRespaldo;             // 👈 Necesaria para la tabla
-window.abrirConfigRespaldos = abrirConfigRespaldos;
-window.cerrarConfigRespaldos = cerrarConfigRespaldos;
-window.guardarConfigRespaldos = guardarConfigRespaldos;
-
-// ... (El resto del código de DOMContentLoaded y changeTab se mantiene igual)
 
 const TABS = ['dashboard', 'clientes', 'pagos', 'conciliaciones', 'usuarios', 'notificaciones', 'historial', 'reportes', 'respaldos', 'perfil'];
 
@@ -97,10 +109,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const usuario = getUsuario();
     if (!usuario) { window.location.href = '../pages/login.html'; return; }
 
-    // 1. Cargamos el HTML de los tabs
     await loadSharedTabs(); 
 
-    // 2. 👈 PEQUEÑA PAUSA TÉCNICA: Permite al navegador procesar el nuevo HTML
+    // NOTE: pausa breve para que el navegador procese el HTML insertado por loadSharedTabs antes de continuar
     await new Promise(resolve => setTimeout(resolve, 100));
     
     document.getElementById('sidebarNombre').textContent = usuario.nombre;
@@ -115,13 +126,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
     
-    // 3. Iniciamos el dashboard de forma asíncrona
     await changeTab('dashboard'); 
     
     cargarRoles();
     setInterval(verificarSesion, 60000);
 });
 
+/**
+ * Muestra el tab indicado y oculta el resto, luego carga sus datos.
+ *
+ * @param {string} name - Identificador del tab a activar (p. ej. 'dashboard', 'clientes').
+ * @returns {Promise<void>}
+ */
 async function changeTab(name) {
     TABS.forEach(t => {
         const el = document.getElementById(`tab-${t}`);
@@ -132,8 +148,8 @@ async function changeTab(name) {
         item.classList.toggle('active', item.getAttribute('data-tab') === name)
     );
 
-    // 👈 CAMBIO: Await en las funciones de carga de datos
-    if (name === 'dashboard') { 
+    // NOTE: await garantiza que los datos del dashboard estén listos antes de mostrar la vista
+    if (name === 'dashboard') {
         await cargarStatsDashboard(); 
         await cargarListasDashboard(); 
     }
@@ -148,6 +164,14 @@ async function changeTab(name) {
     if (name === 'perfil')         inicializarPerfil();
 }
 
+/**
+ * Verifica que la sesión del usuario siga activa en el servidor.
+ *
+ * Si el servidor indica que la sesión es inválida, elimina los datos
+ * locales y redirige al login. Se ejecuta en intervalos periódicos.
+ *
+ * @returns {Promise<void>}
+ */
 async function verificarSesion() {
     const usuario = getUsuario();
     if (!usuario) return;
@@ -164,6 +188,12 @@ async function verificarSesion() {
     } catch(e) {}
 }
 
+/**
+ * Actualiza el avatar del sidebar con la foto de perfil o las iniciales del usuario.
+ *
+ * Construye la URL de la foto si está disponible; de lo contrario muestra
+ * las iniciales generadas por getIniciales.
+ */
 function actualizarAvatar() {
     const usuario = getUsuario();
     const initalsEl = document.getElementById('sidebarInitials');

@@ -1,6 +1,19 @@
 /**
- * Archivo: frontend/js/pages/empleado.js
- * Propósito: Controlador del dashboard Empleado (Refactorizado).
+ * Entry point de la vista de dashboard para el rol Empleado.
+ *
+ * Inicializa la sesión, carga los tabs compartidos y despacha
+ * la lógica de cada sección a sus módulos correspondientes.
+ *
+ * Módulos importados:
+ *   - core/auth.js: verificación de sesión y cierre de sesión.
+ *   - core/api.js: URL base de la API REST.
+ *   - core/utils.js: utilidades generales (iniciales de nombre).
+ *   - core/partials.js: carga de tabs HTML compartidos.
+ *   - core/dashboard_utils.js: carga de estadísticas y listas del dashboard.
+ *   - modules/clientes.js: gestión de clientes.
+ *   - modules/pagos.js: gestión de pagos.
+ *   - modules/recordatorios.js: gestión de recordatorios a clientes.
+ *   - modules/perfil.js: gestión del perfil del usuario.
  */
 
 import { getUsuario, cerrarSesion } from '../core/auth.js';
@@ -33,10 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const usuario = getUsuario();
     if (!usuario) { window.location.href = '../pages/login.html'; return; }
 
-    // 1. Cargamos el HTML de los tabs
     await loadSharedTabs(); 
 
-    // 2. 👈 PEQUEÑA PAUSA TÉCNICA: Permite al navegador procesar el nuevo HTML
+    // NOTE: pausa breve para que el navegador procese el HTML insertado por loadSharedTabs antes de continuar
     await new Promise(resolve => setTimeout(resolve, 100));
     
     document.getElementById('sidebarNombre').textContent = usuario.nombre;
@@ -50,14 +62,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
-    
-    // 3. Iniciamos el dashboard de forma asíncrona
+
     await changeTab('dashboard'); 
     
-    cargarRoles();
     setInterval(verificarSesion, 60000);
 });
 
+/**
+ * Muestra el tab indicado y oculta el resto, luego carga sus datos.
+ *
+ * @param {string} name - Identificador del tab a activar (p. ej. 'dashboard', 'clientes').
+ * @returns {Promise<void>}
+ */
 async function changeTab(name) {
     TABS.forEach(t => {
         const el = document.getElementById(`tab-${t}`);
@@ -68,8 +84,8 @@ async function changeTab(name) {
         item.classList.toggle('active', item.getAttribute('data-tab') === name)
     );
 
-    // 👈 CAMBIO: Await en las funciones de datos
-    if (name === 'dashboard') { 
+    // NOTE: await garantiza que los datos del dashboard estén listos antes de mostrar la vista
+    if (name === 'dashboard') {
         await cargarStatsDashboard(); 
         await cargarListasDashboard(); 
     }
@@ -79,6 +95,12 @@ async function changeTab(name) {
     if (name === 'perfil')         inicializarPerfil();
 }
 
+/**
+ * Actualiza el avatar del sidebar con la foto de perfil o las iniciales del usuario.
+ *
+ * Construye la URL de la foto si está disponible; de lo contrario muestra
+ * las iniciales generadas por getIniciales.
+ */
 function actualizarAvatar() {
     const usuario = getUsuario();
     const initalsEl = document.getElementById('sidebarInitials');
@@ -90,6 +112,30 @@ function actualizarAvatar() {
     } else if (usuario) {
         initalsEl.textContent = getIniciales(usuario.nombre);
     }
+}
+
+/**
+ * Verifica que la sesión del usuario siga activa en el servidor.
+ *
+ * Si el servidor indica que la sesión es inválida, elimina los datos
+ * locales y redirige al login. Se ejecuta en intervalos periódicos.
+ *
+ * @returns {Promise<void>}
+ */
+async function verificarSesion() {
+    const usuario = getUsuario();
+    if (!usuario) return;
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/session/check`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: usuario.username })
+        });
+        const data = await res.json();
+        if (!data.valid) {
+            sessionStorage.removeItem('usuario');
+            window.location.href = '../pages/login.html';
+        }
+    } catch(e) {}
 }
 
 window.actualizarAvatarSidebar = actualizarAvatar;

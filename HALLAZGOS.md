@@ -284,3 +284,42 @@ function cambiarPagina(p, total, perPage, paginaRef, renderFn) { ... }
 La cadena HTML del estado "Cargando..." con estilos inline se repite al menos en 7 módulos con variaciones mínimas (distinto `colspan`, distinto texto). Cualquier cambio de estilo o texto tendrá que aplicarse en cada aparición.
 
 **Acción sugerida:** añadir a `core/utils.js` un helper `setTableLoading(tbodyId, colspan, mensaje)` que centralice la generación de esta fila.
+
+---
+
+# Hallazgos técnicos — frontend/js/pages/
+
+Registrados durante la tarea de documentación de `frontend/js/pages/`.  
+Los hallazgos 20 y 21 fueron corregidos en la misma sesión por instrucción explícita del usuario.
+
+---
+
+## 20. `cargarRoles` invocada en empleado.js sin importar ✅ corregido
+
+**Archivo:** `empleado.js`  
+**Línea original:** `cargarRoles();` dentro del callback `DOMContentLoaded`
+
+`cargarRoles` está importada en `admin.js` desde `modules/usuarios.js`, pero en `empleado.js` nunca fue importada. El dashboard de empleado no tiene tab de usuarios, por lo que la llamada era un residuo de copy-paste desde admin.js.
+
+**Corrección aplicada:** se eliminó la llamada a `cargarRoles()`.
+
+---
+
+## 21. `verificarSesion` invocada en empleado.js sin definir ✅ corregido
+
+**Archivo:** `empleado.js`  
+**Línea original:** `setInterval(verificarSesion, 60000);` dentro del callback `DOMContentLoaded`
+
+La función `verificarSesion` estaba definida únicamente en `admin.js`. En `empleado.js` se la llamaba con `setInterval` pero la función no existía, lo que provocaría un `ReferenceError` en tiempo de ejecución cada vez que el intervalo disparara.
+
+**Corrección aplicada:** se añadió la definición de `verificarSesion` en `empleado.js` con la misma lógica que en `admin.js`, usando `API_BASE_URL` y `getUsuario` ya disponibles en el módulo.
+
+---
+
+## 22. Bloque de asignaciones `window.*` duplicado en admin.js ✅ corregido (linter)
+
+**Archivo:** `admin.js`
+
+Las asignaciones globales para `crearRespaldo`, `abrirConfigRespaldos`, `cerrarConfigRespaldos` y `guardarConfigRespaldos` aparecían dos veces. El segundo bloque también incluía `confirmarRestauracion`, `confirmarEliminarRespaldo` y `descargarRespaldo`, que solo estaban en el segundo bloque y por eso no podían eliminarse completo. El linter consolidó ambos bloques en uno solo.
+
+**Corrección aplicada:** el linter eliminó las asignaciones duplicadas y dejó un único bloque completo de respaldos.
