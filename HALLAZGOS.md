@@ -110,8 +110,7 @@ En cambio, `registrar_pago()` en `pagos.py` incluye la lógica completa (conside
 # Hallazgos técnicos — backend/services/
 
 Registrados durante la tarea de documentación de `backend/services/`.  
-Todos están pendientes de decisión y acción.  
-El hallazgo 11 ya está marcado con `# FIXME` en el código.
+Todos están pendientes de decisión y acción.
 
 ---
 
@@ -153,18 +152,6 @@ La función hace `conn.commit()` dentro del `for` por cada cliente procesado. Si
 
 ---
 
-## 11. Posible NameError en validar_telefono
-
-**Archivo:** `validators_service.py`  
-**Función:** `validar_telefono()`  
-**Marcador en código:** `# FIXME` (línea ~124)
-
-El bloque `except Exception as e:` retorna `True, tel_wa`, pero `tel_wa` se define después de `phonenumbers.format_number()`. Si esta llamada lanzara una excepción no prevista, `tel_wa` no estaría definido y se produciría un `NameError` dentro del propio handler.
-
-**Acción sugerida:** inicializar `tel_wa = None` antes del bloque `try`, o separar el `except` genérico del `except NumberParseException` para que solo cubra el bloque de la llamada a la API.
-
----
-
 # Hallazgos técnicos — backend/app.py y backend/db.py
 
 Registrados durante la tarea de documentación de `backend/app.py` y `backend/db.py`.  
@@ -172,7 +159,7 @@ Todos están pendientes de decisión y acción.
 
 ---
 
-## 12. Importación sin usar — psycopg2.extras en db.py
+## 11. Importación sin usar — psycopg2.extras en db.py
 
 **Archivo:** `db.py`  
 **Línea:** `import psycopg2.extras`
@@ -186,11 +173,11 @@ El módulo `psycopg2.extras` se importa en `db.py` pero no se usa en ningún pun
 # Hallazgos técnicos — frontend/js/core/
 
 Registrados durante la tarea de documentación de `frontend/js/core/`.  
-El hallazgo 14 implicó corrección del comentario inconsistente, no del código.
+El hallazgo 13 implicó corrección del comentario inconsistente, no del código.
 
 ---
 
-## 13. Importación sin usar en auth.js
+## 12. Importación sin usar en auth.js
 
 **Archivo:** `auth.js`  
 **Línea:** `import { API_BASE_URL } from './api.js';`
@@ -201,7 +188,7 @@ El hallazgo 14 implicó corrección del comentario inconsistente, no del código
 
 ---
 
-## 14. Inconsistencia entre comentario y código en cargarListasDashboard
+## 13. Inconsistencia entre comentario y código en cargarListasDashboard
 
 **Archivo:** `dashboard_utils.js`  
 **Función:** `cargarListasDashboard()`  
@@ -220,7 +207,7 @@ Todos están pendientes de decisión y acción (salvo el catch vacío de `respal
 
 ---
 
-## 15. `event.target` del objeto global en reportes.js
+## 14. `event.target` del objeto global en reportes.js
 
 **Archivo:** `reportes.js`  
 **Funciones:** `descargarReporte()`, `enviarEstadosDeCuenta()`  
@@ -241,7 +228,7 @@ y recibir el elemento como segundo parámetro en la función.
 
 ---
 
-## 16. Importación sin usar — getIniciales en recordatorios.js
+## 15. Importación sin usar — getIniciales en recordatorios.js
 
 **Archivo:** `recordatorios.js`  
 **Línea:** `import { getIniciales, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';`
@@ -252,7 +239,7 @@ y recibir el elemento como segundo parámetro en la función.
 
 ---
 
-## 17. Patrón de paginación triplicado en módulos
+## 16. Patrón de paginación triplicado en módulos
 
 **Archivos:** `clientes.js` → `cambiarPagina`, `pagos.js` → `cambiarPaginaPagos`, `historial.js` → `cambiarPaginaHistorial`
 
@@ -266,7 +253,7 @@ function cambiarPagina(p, total, perPage, paginaRef, renderFn) { ... }
 
 ---
 
-## 18. HTML de estado de carga duplicado en múltiples módulos
+## 17. HTML de estado de carga duplicado en múltiples módulos
 
 **Archivos:** `clientes.js`, `pagos.js`, `conciliaciones.js`, `recordatorios.js`, `reportes.js`, `respaldos.js`, `historial.js`
 
@@ -280,7 +267,7 @@ La cadena HTML del estado "Cargando..." con estilos inline se repite al menos en
 
 ---
 
-## 19. Autenticación basada en header X-Username sin verificación real
+## 18. Autenticación basada en header X-Username sin verificación real
 
 **Archivos:** todos los endpoints que usan `request.headers.get('X-Username')`
 
