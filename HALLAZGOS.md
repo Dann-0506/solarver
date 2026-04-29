@@ -174,3 +174,21 @@ La función hace `conn.commit()` dentro del `for` por cada cliente procesado. Si
 El bloque `except Exception as e:` retorna `True, tel_wa`, pero `tel_wa` se define después de `phonenumbers.format_number()`. Si esta llamada lanzara una excepción no prevista, `tel_wa` no estaría definido y se produciría un `NameError` dentro del propio handler.
 
 **Acción sugerida:** inicializar `tel_wa = None` antes del bloque `try`, o separar el `except` genérico del `except NumberParseException` para que solo cubra el bloque de la llamada a la API.
+
+---
+
+# Hallazgos técnicos — backend/app.py y backend/db.py
+
+Registrados durante la tarea de documentación de `backend/app.py` y `backend/db.py`.  
+Ningún ítem fue corregido; todos están pendientes de decisión y acción.
+
+---
+
+## 13. Importación sin usar — psycopg2.extras en db.py
+
+**Archivo:** `db.py`  
+**Línea:** `import psycopg2.extras`
+
+El módulo `psycopg2.extras` se importa en `db.py` pero no se usa en ningún punto del archivo. Si algún otro módulo lo importa transitivamente vía `db`, eso constituye un acoplamiento implícito que puede romperse si se reorganizan los imports.
+
+**Acción sugerida:** si `psycopg2.extras` se necesita en otro módulo (por ejemplo para usar `RealDictCursor`), importarlo directamente en ese módulo. Si no se usa en ningún lado, eliminar la línea.
