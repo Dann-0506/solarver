@@ -9,6 +9,7 @@ from __future__ import annotations
 from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras
+from services.pagos_service import procesar_conciliacion
 
 conciliaciones_bp = Blueprint('conciliaciones', __name__)
 
@@ -71,30 +72,8 @@ def conciliar_manual(id_referencia: int) -> tuple[Response, int]:
         conn = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
-        cursor.execute('SELECT * FROM "REFERENCIAPAGO" WHERE "Id_Referencia" = %s AND "Estado" = %s', (id_referencia, 'Pendiente'))
-        ref = cursor.fetchone()
-        if not ref:
+        if not procesar_conciliacion(cursor, id_referencia):
             return jsonify({'success': False, 'message': 'Referencia no encontrada o ya procesada.'}), 404
-            
-        monto = float(ref['Monto_Esperado'])
-        id_deuda = ref['Id_Deuda']
-
-        cursor.execute("SELECT nextval('folio_seq') AS num")
-        folio = f"FOL-MAN-{cursor.fetchone()['num']}"
-
-        cursor.execute("""
-            INSERT INTO "PAGO" ("Id_Deuda","Monto","Fecha_Pago","Metodo_Pago","Folio","Estado","Referencia_Externa")
-            VALUES (%s, %s, NOW(), 'Conciliación', %s, 'completado', %s)
-        """, (id_deuda, monto, folio, ref['Clave_Ref']))
-
-        cursor.execute('UPDATE "REFERENCIAPAGO" SET "Estado" = %s WHERE "Id_Referencia" = %s', ('Conciliado_Manual', id_referencia))
-
-        cursor.execute('SELECT "Saldo_Pendiente" FROM "DEUDA" WHERE "Id_Deuda"=%s', (id_deuda,))
-        deuda = cursor.fetchone()
-        nuevo_saldo = max(float(deuda['Saldo_Pendiente']) - monto, 0)
-        nuevo_estatus = 'pagado' if nuevo_saldo <= 0 else 'pendiente'
-        
-        cursor.execute('UPDATE "DEUDA" SET "Saldo_Pendiente"=%s, "Estatus"=%s WHERE "Id_Deuda"=%s', (nuevo_saldo, nuevo_estatus, id_deuda))
 
         conn.commit()
         return jsonify({'success': True, 'message': 'Pago conciliado manualmente con éxito.'}), 200
@@ -133,32 +112,8 @@ def conciliar_masivo() -> tuple[Response, int]:
         procesados = 0
         
         for id_ref in referencias:
-            cursor.execute('SELECT * FROM "REFERENCIAPAGO" WHERE "Id_Referencia" = %s AND "Estado" = %s', (id_ref, 'Pendiente'))
-            ref = cursor.fetchone()
-            if not ref:
-                continue
-                
-            monto = float(ref['Monto_Esperado'])
-            id_deuda = ref['Id_Deuda']
-
-            cursor.execute("SELECT nextval('folio_seq') AS num")
-            folio = f"FOL-MAN-{cursor.fetchone()['num']}"
-
-            cursor.execute("""
-                INSERT INTO "PAGO" ("Id_Deuda","Monto","Fecha_Pago","Metodo_Pago","Folio","Estado","Referencia_Externa")
-                VALUES (%s, %s, NOW(), 'Conciliación', %s, 'completado', %s)
-            """, (id_deuda, monto, folio, ref['Clave_Ref']))
-
-            cursor.execute('UPDATE "REFERENCIAPAGO" SET "Estado" = %s WHERE "Id_Referencia" = %s', ('Conciliado_Manual', id_ref))
-
-            cursor.execute('SELECT "Saldo_Pendiente" FROM "DEUDA" WHERE "Id_Deuda"=%s', (id_deuda,))
-            deuda = cursor.fetchone()
-            nuevo_saldo = max(float(deuda['Saldo_Pendiente']) - monto, 0)
-            nuevo_estatus = 'pagado' if nuevo_saldo <= 0 else 'pendiente'
-            
-            cursor.execute('UPDATE "DEUDA" SET "Saldo_Pendiente"=%s, "Estatus"=%s WHERE "Id_Deuda"=%s', (nuevo_saldo, nuevo_estatus, id_deuda))
-            
-            procesados += 1
+            if procesar_conciliacion(cursor, id_ref):
+                procesados += 1
 
         conn.commit()
         return jsonify({'success': True, 'message': f'{procesados} pagos conciliados exitosamente de manera masiva.'}), 200

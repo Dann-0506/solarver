@@ -21,44 +21,7 @@ Cualquier cuenta que no tenga su contraseña migrada a bcrypt puede autenticarse
 
 ---
 
-## 2. Código duplicado — Lógica de conciliación
-
-**Archivos:** `conciliaciones.py`  
-**Funciones:** `conciliar_manual()`, `conciliar_masivo()`
-
-Ambas funciones ejecutan exactamente los mismos pasos en el mismo orden:
-1. `SELECT nextval('folio_seq')` → generar folio `FOL-MAN-N`
-2. `INSERT INTO "PAGO"` con método `'Conciliación'`
-3. `UPDATE "REFERENCIAPAGO"` → estado `'Conciliado_Manual'`
-4. `SELECT "Saldo_Pendiente"` → calcular nuevo saldo
-5. `UPDATE "DEUDA"` → actualizar saldo y estatus
-
-La única diferencia es que `conciliar_masivo` itera sobre una lista y omite referencias no encontradas (`continue`). Un bug corregido en una función deberá replicarse manualmente en la otra.
-
-**Acción sugerida:** extraer un helper privado `_procesar_referencia(cursor, id_ref)` y llamarlo desde ambas rutas.
-
----
-
-## 3. Código duplicado — Generación de folio
-
-**Archivos:** `pagos.py`, `conciliaciones.py`, `webhooks.py`  
-**Patrón repetido:** `SELECT nextval('folio_seq') AS num`
-
-La misma consulta para consumir la secuencia de folios aparece en 5 puntos:
-
-| Archivo | Función | Prefijo de folio |
-|---|---|---|
-| `pagos.py` | `siguiente_folio()` | `FOL-N` |
-| `pagos.py` | `registrar_pago()` | `FOL-N` |
-| `conciliaciones.py` | `conciliar_manual()` | `FOL-MAN-N` |
-| `conciliaciones.py` | `conciliar_masivo()` | `FOL-MAN-N` |
-| `webhooks.py` | `recibir_pago_automatico()` | `FOL-AUTO-N` / `FOL-HUERF-N` |
-
-**Acción sugerida:** centralizar en un helper `generar_folio(cursor, prefijo="FOL")` en `db.py` o en un servicio compartido.
-
----
-
-## 4. Ruta de historial fuera de su módulo
+## 2. Ruta de historial fuera de su módulo
 
 **Archivo:** `recordatorios.py`  
 **Función:** `get_historial()`  
@@ -70,7 +33,7 @@ Esta función retorna el historial de cambios del sistema (`HISTORIALCAMBIOS`) y
 
 ---
 
-## 5. Función con dos métodos HTTP en una sola firma
+## 3. Función con dos métodos HTTP en una sola firma
 
 **Archivos:** `usuarios.py`, `respaldos.py`  
 **Funciones:** `gestionar_usuario()` (PUT + DELETE), `config_respaldos()` (GET + POST)
@@ -81,29 +44,13 @@ Las dos funciones manejan verbos HTTP distintos con lógica completamente separa
 
 ---
 
-## 6. Finales de línea mixtos (CRLF / LF)
+## 4. Finales de línea mixtos (CRLF / LF)
 
 **Archivos:** `clientes.py`, `recordatorios.py`
 
 Git reporta que estos dos archivos tienen finales de línea CRLF, distintos al resto del proyecto que usa LF. Probablemente fueron editados con un editor de Windows.
 
 **Acción sugerida:** normalizar con `git add --renormalize` o configurar `.gitattributes` con `* text=auto` para forzar LF en todo el repositorio.
-
----
-
-## 7. Estatus de deuda simplificado en conciliación
-
-**Archivos:** `conciliaciones.py`, `webhooks.py`
-
-Al actualizar la deuda tras una conciliación, el estatus calculado es únicamente `'pagado'` o `'pendiente'`:
-
-```python
-nuevo_estatus = 'pagado' if nuevo_saldo <= 0 else 'pendiente'
-```
-
-En cambio, `registrar_pago()` en `pagos.py` incluye la lógica completa (considera `'atrasado'` según el día del corte y el monto pagado en el periodo). Las conciliaciones nunca producen el estatus `'atrasado'` aunque el pago llegue tarde.
-
-**Acción sugerida:** alinear la lógica de estatus de los tres flujos de pago (manual, conciliación, webhook), o documentar intencionalmente que los pagos conciliados siempre resetean a `'pendiente'` si hay saldo.
 
 ---
 
@@ -114,7 +61,7 @@ Todos están pendientes de decisión y acción.
 
 ---
 
-## 8. Importación sin usar en notificaciones_service
+## 5. Importación sin usar en notificaciones_service
 
 **Archivo:** `notificaciones_service.py`  
 **Línea:** `from reportlab.lib.pagesizes import letter`
@@ -125,7 +72,7 @@ Este import existe en el archivo pero `letter` no se usa en ningún punto de `no
 
 ---
 
-## 9. `except` desnudo en generar_excel_reporte
+## 6. `except` desnudo en generar_excel_reporte
 
 **Archivo:** `documentos_service.py`  
 **Función:** `generar_excel_reporte()`
@@ -141,7 +88,7 @@ except:
 
 ---
 
-## 10. Commit por cliente dentro del loop en procesar_cobros_automaticos
+## 7. Commit por cliente dentro del loop en procesar_cobros_automaticos
 
 **Archivo:** `scheduler_service.py`  
 **Función:** `procesar_cobros_automaticos()`
@@ -159,7 +106,7 @@ Todos están pendientes de decisión y acción.
 
 ---
 
-## 11. Importación sin usar — psycopg2.extras en db.py
+## 8. Importación sin usar — psycopg2.extras en db.py
 
 **Archivo:** `db.py`  
 **Línea:** `import psycopg2.extras`
@@ -173,11 +120,11 @@ El módulo `psycopg2.extras` se importa en `db.py` pero no se usa en ningún pun
 # Hallazgos técnicos — frontend/js/core/
 
 Registrados durante la tarea de documentación de `frontend/js/core/`.  
-El hallazgo 13 implicó corrección del comentario inconsistente, no del código.
+El hallazgo 10 implicó corrección del comentario inconsistente, no del código.
 
 ---
 
-## 12. Importación sin usar en auth.js
+## 9. Importación sin usar en auth.js
 
 **Archivo:** `auth.js`  
 **Línea:** `import { API_BASE_URL } from './api.js';`
@@ -188,7 +135,7 @@ El hallazgo 13 implicó corrección del comentario inconsistente, no del código
 
 ---
 
-## 13. Inconsistencia entre comentario y código en cargarListasDashboard
+## 10. Inconsistencia entre comentario y código en cargarListasDashboard
 
 **Archivo:** `dashboard_utils.js`  
 **Función:** `cargarListasDashboard()`  
@@ -207,7 +154,7 @@ Todos están pendientes de decisión y acción (salvo el catch vacío de `respal
 
 ---
 
-## 14. `event.target` del objeto global en reportes.js
+## 11. `event.target` del objeto global en reportes.js
 
 **Archivo:** `reportes.js`  
 **Funciones:** `descargarReporte()`, `enviarEstadosDeCuenta()`  
@@ -228,7 +175,7 @@ y recibir el elemento como segundo parámetro en la función.
 
 ---
 
-## 15. Importación sin usar — getIniciales en recordatorios.js
+## 12. Importación sin usar — getIniciales en recordatorios.js
 
 **Archivo:** `recordatorios.js`  
 **Línea:** `import { getIniciales, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';`
@@ -239,7 +186,7 @@ y recibir el elemento como segundo parámetro en la función.
 
 ---
 
-## 16. Patrón de paginación triplicado en módulos
+## 13. Patrón de paginación triplicado en módulos
 
 **Archivos:** `clientes.js` → `cambiarPagina`, `pagos.js` → `cambiarPaginaPagos`, `historial.js` → `cambiarPaginaHistorial`
 
@@ -253,7 +200,7 @@ function cambiarPagina(p, total, perPage, paginaRef, renderFn) { ... }
 
 ---
 
-## 17. HTML de estado de carga duplicado en múltiples módulos
+## 14. HTML de estado de carga duplicado en múltiples módulos
 
 **Archivos:** `clientes.js`, `pagos.js`, `conciliaciones.js`, `recordatorios.js`, `reportes.js`, `respaldos.js`, `historial.js`
 
@@ -267,7 +214,7 @@ La cadena HTML del estado "Cargando..." con estilos inline se repite al menos en
 
 ---
 
-## 18. Autenticación basada en header X-Username sin verificación real
+## 15. Autenticación basada en header X-Username sin verificación real
 
 **Archivos:** todos los endpoints que usan `request.headers.get('X-Username')`
 

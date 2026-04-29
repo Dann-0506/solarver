@@ -10,7 +10,7 @@ from __future__ import annotations
 from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras
-from datetime import datetime
+from services.pagos_service import generar_folio, calcular_estatus_deuda
 
 pagos_bp = Blueprint('pagos', __name__)
 
@@ -51,34 +51,6 @@ def get_pagos() -> tuple[Response, int]:
                 row['Fecha_Pago'] = row['Fecha_Pago'].strftime('%d/%m/%Y %H:%M')
             result.append(row)
         return jsonify({ 'success': True, 'pagos': result }), 200
-    except Exception as e:
-        return jsonify({ 'success': False, 'message': str(e) }), 500
-    finally:
-        if cursor: cursor.close()
-        if conn:   conn.close()
-
-
-@pagos_bp.route('/pagos/siguiente-folio', methods=['GET'])
-def siguiente_folio() -> tuple[Response, int]:
-    """Genera y reserva el siguiente número de folio de la secuencia.
-
-    Consume un número de la secuencia ``folio_seq`` de PostgreSQL, que es
-    atómica y evita duplicados bajo concurrencia.
-
-    Returns:
-        Tupla (respuesta JSON, 200) con el folio generado en formato
-        ``FOL-N``. Retorna 500 ante error de base de datos.
-    """
-    conn = cursor = None
-    try:
-        conn   = get_connection()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        # Usar la secuencia atómica de PostgreSQL
-        cursor.execute("SELECT nextval('folio_seq') AS num")
-        num   = cursor.fetchone()['num']
-        folio = f'FOL-{num}'
-        conn.commit()
-        return jsonify({ 'success': True, 'folio': folio }), 200
     except Exception as e:
         return jsonify({ 'success': False, 'message': str(e) }), 500
     finally:
@@ -134,8 +106,7 @@ def registrar_pago() -> tuple[Response, int]:
         if monto > saldo_actual:
             advertencia = f'El monto ingresado (${monto:,.2f}) supera el saldo pendiente (${saldo_actual:,.2f}).'
 
-        cursor.execute("SELECT nextval('folio_seq') AS num")
-        folio = f"FOL-{cursor.fetchone()['num']}"
+        folio = generar_folio(cursor)
 
         cursor.execute("""
             INSERT INTO "PAGO" ("Id_Deuda","Monto","Fecha_Pago","Metodo_Pago","Folio","Estado")
@@ -147,34 +118,8 @@ def registrar_pago() -> tuple[Response, int]:
         nuevo_saldo = max(saldo_actual - monto, 0)
 
         interes_actual = float(deuda['Interes_Acumulado'] or 0)
-        nuevo_interes = max(interes_actual - monto, 0)
-
-        hoy = datetime.now()
-        dia_corte = int(deuda['Fecha_Pago'])
-        
-        if dia_corte == 5:
-            if hoy.day >= 5: inicio_periodo = datetime(hoy.year, hoy.month, 5)
-            else: inicio_periodo = datetime(hoy.year if hoy.month > 1 else hoy.year - 1, hoy.month - 1 if hoy.month > 1 else 12, 5)
-        else:
-            if hoy.day >= 17: inicio_periodo = datetime(hoy.year, hoy.month, 17)
-            else: inicio_periodo = datetime(hoy.year if hoy.month > 1 else hoy.year - 1, hoy.month - 1 if hoy.month > 1 else 12, 17)
-
-        cursor.execute("""
-            SELECT COALESCE(SUM("Monto"), 0) AS total_pagado
-            FROM "PAGO"
-            WHERE "Id_Deuda" = %s AND "Fecha_Pago" >= %s AND "Estado" = 'completado'
-        """, (deuda['Id_Deuda'], inicio_periodo))
-        pagado_mes = float(cursor.fetchone()['total_pagado'])
-
-        mensualidad = float(deuda['Monto_Total']) / int(deuda['Plazo_Meses'] or 12)
-        pago_requerido = mensualidad + interes_actual
-
-        if round(nuevo_saldo, 2) <= 0 or round(pagado_mes, 2) >= round(pago_requerido, 2):
-            nuevo_estatus = 'pagado'
-        elif hoy.day > dia_corte:
-            nuevo_estatus = 'atrasado'
-        else:
-            nuevo_estatus = 'pendiente'
+        nuevo_interes  = max(interes_actual - monto, 0)
+        nuevo_estatus  = calcular_estatus_deuda(cursor, deuda['Id_Deuda'], nuevo_saldo, deuda)
 
         cursor.execute("""
             UPDATE "DEUDA"
