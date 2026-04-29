@@ -1,9 +1,23 @@
+/**
+ * Módulo de gestión del perfil de usuario.
+ *
+ * Inicializa los formularios de datos personales y cambio de contraseña
+ * en la vista de perfil. Soporta carga de foto de perfil con previsualización.
+ */
+
 import { getUsuario, actualizarDatosSesion } from '../core/auth.js';
 import { API_BASE_URL } from '../core/api.js';
-import { mostrarToast } from '../core/utils.js'; // 👈 Importamos el nuevo servicio de Toasts
+import { mostrarToast } from '../core/utils.js';
 
+// Evita registrar los listeners de submit más de una vez si la vista se reinicializa.
 let inicializado = false;
 
+/**
+ * Inicializa los formularios de perfil con los datos de la sesión activa y
+ * registra los manejadores de eventos para guardar datos y cambiar contraseña.
+ * Solo registra los listeners en la primera llamada; las siguientes actualizan
+ * el avatar pero omiten el registro duplicado de eventos.
+ */
 export function inicializarPerfil() {
     const usuario = getUsuario();
     if (!usuario) return;
@@ -26,7 +40,7 @@ export function inicializarPerfil() {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) {
-                // 👈 Reemplazamos alert por mostrarToast
+                // Límite de 5 MB para no saturar el endpoint de subida.
                 mostrarToast('La imagen es demasiado grande. El máximo permitido es 5MB.', 'error');
                 this.value = '';
                 return;
@@ -44,7 +58,7 @@ export function inicializarPerfil() {
 
     formDatos.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
+
         const btnSubmit = formDatos.querySelector('button[type="submit"]');
         const textoOriginal = btnSubmit.innerText;
         btnSubmit.innerText = 'Guardando...';
@@ -54,7 +68,7 @@ export function inicializarPerfil() {
             const formData = new FormData();
             formData.append('nombre', document.getElementById('nombrePerfil').value);
             formData.append('username', document.getElementById('usernamePerfil').value);
-            
+
             const file = inputFoto.files[0];
             if (file) {
                 formData.append('foto', file);
@@ -78,7 +92,6 @@ export function inicializarPerfil() {
                     window.actualizarAvatarSidebar();
                 }
 
-                // 👈 Reemplazamos alert por mostrarToast
                 mostrarToast('¡Datos personales actualizados correctamente!', 'success');
             } else {
                 mostrarToast(result.message || 'Error al actualizar el perfil.', 'error');
@@ -100,7 +113,6 @@ export function inicializarPerfil() {
         const passConfirmar = document.getElementById('passwordConfirmar').value;
 
         if (passNueva !== passConfirmar) {
-            // 👈 Reemplazamos alert por mostrarToast (tipo warning)
             mostrarToast('Las contraseñas nuevas no coinciden.', 'warning');
             return;
         }

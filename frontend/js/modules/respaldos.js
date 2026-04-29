@@ -1,9 +1,21 @@
+/**
+ * Módulo de gestión de respaldos de base de datos.
+ *
+ * Permite crear, descargar, restaurar y eliminar respaldos, así como
+ * configurar la frecuencia de los respaldos automáticos. Restringido
+ * a usuarios con rol de administrador.
+ */
+
 import { API_BASE_URL } from '../core/api.js';
 import { getUsuario } from '../core/auth.js';
-import { mostrarToast, confirmarAccionGlobal } from '../core/utils.js'; // 👈 Importamos nuestras utilidades
+import { mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
-// ─── FUNCIÓN AUXILIAR DE SEGURIDAD ───
-// Extrae el usuario y prepara los headers para enviarlos al servidor
+/**
+ * Construye los headers de autenticación para las peticiones al endpoint de respaldos.
+ *
+ * @param {boolean} [isJson=true] - Si es `true`, agrega `Content-Type: application/json`.
+ * @returns {Object} Objeto de headers listo para usar en `fetch`.
+ */
 function getAuthHeaders(isJson = true) {
     const usuario = getUsuario();
     const headers = {
@@ -15,6 +27,12 @@ function getAuthHeaders(isJson = true) {
     return headers;
 }
 
+/**
+ * Consulta la configuración actual del respaldo automático y actualiza
+ * los elementos de título y subtítulo en la vista.
+ *
+ * @returns {Promise<void>}
+ */
 export async function actualizarVistaConfig() {
     const titleEl = document.getElementById('configVistaTitulo');
     const subEl = document.getElementById('configVistaSub');
@@ -26,10 +44,10 @@ export async function actualizarVistaConfig() {
             headers: getAuthHeaders(false)
         });
         const data = await res.json();
-        
+
         if (data.success && data.config) {
             const { frecuencia, hora } = data.config;
-            
+
             let textoTitulo = "";
             let textoSub = "";
 
@@ -53,8 +71,14 @@ export async function actualizarVistaConfig() {
     }
 }
 
+/**
+ * Carga la lista de respaldos disponibles y los muestra en la tabla.
+ * También actualiza el bloque de configuración del respaldo automático.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarRespaldos() {
-    actualizarVistaConfig(); 
+    actualizarVistaConfig();
 
     const tbody = document.getElementById('tablaRespaldosBody');
     if (!tbody) return;
@@ -80,7 +104,7 @@ export async function cargarRespaldos() {
                         <div style="font-weight:600; color:var(--text);">${r.nombre}</div>
                     </td>
                     <td>
-                        <span style="font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; font-weight: 600; 
+                        <span style="font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; font-weight: 600;
                             ${r.tipo === 'Automático' ? 'background: #E8F0FE; color: var(--blue);' : 'background: #F3F4F6; color: var(--muted);'}">
                             ${r.tipo}
                         </span>
@@ -107,7 +131,7 @@ export async function cargarRespaldos() {
                 </tr>
             `).join('');
         } else {
-             tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--error); padding: 32px;">${data.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--error); padding: 32px;">${data.message}</td></tr>`;
         }
     } catch (e) {
         console.error(e);
@@ -115,28 +139,40 @@ export async function cargarRespaldos() {
     }
 }
 
+/**
+ * Crea un respaldo manual de la base de datos y recarga la tabla al terminar.
+ *
+ * @returns {Promise<void>}
+ */
 export async function crearRespaldo() {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/respaldos`, { 
+        const res = await fetch(`${API_BASE_URL}/api/respaldos`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({ tipo: 'manual' })
         });
         const data = await res.json();
         if (data.success) {
-            mostrarToast('Respaldo manual creado con éxito.', 'success'); // 👈
+            mostrarToast('Respaldo manual creado con éxito.', 'success');
             cargarRespaldos();
         } else {
-            mostrarToast('Error: ' + data.message, 'error'); // 👈
+            mostrarToast('Error: ' + data.message, 'error');
         }
-    } catch (e) { 
-        mostrarToast('Error al crear respaldo', 'error'); // 👈
+    } catch (e) {
+        mostrarToast('Error al crear respaldo', 'error');
     }
 }
 
+/**
+ * Solicita confirmación y restaura la base de datos al estado del respaldo indicado.
+ * Recarga la página automáticamente tras una restauración exitosa.
+ *
+ * @param {string} nombre - Nombre del archivo de respaldo a restaurar.
+ * @returns {Promise<void>}
+ */
 export async function confirmarRestauracion(nombre) {
     const confirmado = await confirmarAccionGlobal(
-        'Restaurar Sistema', 
+        'Restaurar Sistema',
         `¿Restaurar la base de datos al estado de ${nombre}? Los cambios actuales se perderán.`
     );
     if (!confirmado) return;
@@ -154,18 +190,23 @@ export async function confirmarRestauracion(nombre) {
         } else {
             mostrarToast('Error: ' + data.message, 'error');
         }
-    } catch (e) { 
-        mostrarToast('Error de conexión', 'error'); // 👈
+    } catch (e) {
+        mostrarToast('Error de conexión', 'error');
     }
 }
 
+/**
+ * Solicita confirmación y elimina permanentemente el archivo de respaldo indicado.
+ *
+ * @param {string} nombre - Nombre del archivo de respaldo a eliminar.
+ * @returns {Promise<void>}
+ */
 export async function confirmarEliminarRespaldo(nombre) {
-    // 👈 Reemplazamos confirm nativo por nuestra función asíncrona global
     const confirmado = await confirmarAccionGlobal(
         'Eliminar Respaldo',
         `¿Estás seguro de que deseas eliminar permanentemente el respaldo:\n${nombre}?\n\nEsta acción NO se puede deshacer.`
     );
-    
+
     if (!confirmado) return;
 
     try {
@@ -174,33 +215,43 @@ export async function confirmarEliminarRespaldo(nombre) {
             headers: getAuthHeaders(false)
         });
         const data = await res.json();
-        
+
         if (data.success) {
-            mostrarToast('Respaldo eliminado con éxito.', 'success'); // 👈
-            cargarRespaldos(); 
+            mostrarToast('Respaldo eliminado con éxito.', 'success');
+            cargarRespaldos();
         } else {
-            mostrarToast('Error al eliminar: ' + data.message, 'error'); // 👈
+            mostrarToast('Error al eliminar: ' + data.message, 'error');
         }
     } catch (e) {
-        mostrarToast('Error de conexión con el servidor.', 'error'); // 👈
+        mostrarToast('Error de conexión con el servidor.', 'error');
     }
 }
 
+/**
+ * Inicia la descarga del archivo de respaldo indicado redirigiendo al endpoint de descarga.
+ *
+ * @param {string} nombre - Nombre del archivo de respaldo a descargar.
+ */
 export function descargarRespaldo(nombre) {
     const usuario = getUsuario();
     if (!usuario) return;
     window.location.href = `${API_BASE_URL}/api/respaldos/descargar/${nombre}?u=${usuario.username}`;
 }
 
+/**
+ * Abre el modal de configuración de respaldos automáticos y precarga los valores actuales.
+ *
+ * @returns {Promise<void>}
+ */
 export async function abrirConfigRespaldos() {
     const modal = document.getElementById('configRespaldoModal');
     if(!modal) {
-        mostrarToast("Falta el HTML del modal 'configRespaldoModal'", 'error'); // 👈
+        mostrarToast("Falta el HTML del modal 'configRespaldoModal'", 'error');
         return;
     }
-    
+
     modal.style.display = 'flex';
-    
+
     try {
         const res = await fetch(`${API_BASE_URL}/api/respaldos/config`, {
             method: 'GET',
@@ -211,18 +262,26 @@ export async function abrirConfigRespaldos() {
             document.getElementById('rFrecuencia').value = data.config.frecuencia || 'diario';
             document.getElementById('rHora').value = data.config.hora || '02:00';
         }
-    } catch(e) {}
+    } catch(e) {
+        mostrarToast('No se pudo cargar la configuración actual. Revisa los valores antes de guardar.', 'error');
+    }
 }
 
+// Cierra el modal de configuración de respaldos automáticos.
 export function cerrarConfigRespaldos() {
     document.getElementById('configRespaldoModal').style.display = 'none';
 }
 
+/**
+ * Lee los campos del modal de configuración y guarda la nueva frecuencia y hora de respaldo.
+ *
+ * @returns {Promise<void>}
+ */
 export async function guardarConfigRespaldos() {
     const frecuencia = document.getElementById('rFrecuencia').value;
     const hora = document.getElementById('rHora').value;
     const btn = document.getElementById('btnGuardarConfig');
-    
+
     btn.innerText = 'Guardando...';
     btn.disabled = true;
 
@@ -234,14 +293,14 @@ export async function guardarConfigRespaldos() {
         });
         const data = await res.json();
         if (data.success) {
-            mostrarToast('¡Configuración de respaldos automáticos guardada!', 'success'); // 👈
+            mostrarToast('¡Configuración de respaldos automáticos guardada!', 'success');
             cerrarConfigRespaldos();
             actualizarVistaConfig();
         } else {
-            mostrarToast('Error: ' + data.message, 'error'); // 👈
+            mostrarToast('Error: ' + data.message, 'error');
         }
     } catch(e) {
-        mostrarToast('Error al guardar.', 'error'); // 👈
+        mostrarToast('Error al guardar.', 'error');
     } finally {
         btn.innerText = 'Guardar';
         btn.disabled = false;

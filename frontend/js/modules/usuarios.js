@@ -1,14 +1,19 @@
 /**
- * Archivo: frontend/js/modules/usuarios.js
- * Propósito: CRUD completo de usuarios del sistema (solo Administrador).
+ * Módulo de administración de usuarios del sistema.
+ *
+ * Gestiona el CRUD completo de usuarios: listado, creación, edición y
+ * eliminación. Disponible únicamente para usuarios con rol de administrador.
  */
 
 import { API_BASE_URL } from '../core/api.js';
 import { getUsuario } from '../core/auth.js';
-// 👈 Importamos nuestras nuevas utilidades
 import { getIniciales, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
-// ── Cargar roles en los selects ────────────────────────────
+/**
+ * Carga los roles disponibles desde la API y los popula en el select de creación.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarRoles() {
     try {
         const res  = await fetch(`${API_BASE_URL}/api/roles`);
@@ -27,7 +32,12 @@ export async function cargarRoles() {
     } catch (e) { console.error('Error cargando roles:', e); }
 }
 
-// ── Cargar y renderizar tabla de usuarios ─────────────────
+/**
+ * Carga la lista de usuarios desde la API y la renderiza en la tabla,
+ * resaltando al usuario actualmente autenticado.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarUsuarios() {
     const tbody = document.getElementById('usuariosTableBody');
     if (!tbody) return;
@@ -55,7 +65,7 @@ export async function cargarUsuarios() {
             if (u.Foto_Perfil) {
                 const rutaLimpia = u.Foto_Perfil.startsWith('/') ? u.Foto_Perfil.substring(1) : u.Foto_Perfil;
                 const urlCompleta = `${API_BASE_URL}/${rutaLimpia}`;
-                
+
                 avatarHtml = `<img src="${urlCompleta}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" onerror="this.parentElement.innerHTML='${ini}';this.parentElement.style.background='${colorBg}'">`;
                 avatarStyle = 'background:transparent; padding:0;';
             }
@@ -87,7 +97,12 @@ export async function cargarUsuarios() {
     }
 }
 
-// ── Crear usuario ──────────────────────────────────────────
+/**
+ * Lee los campos del formulario de creación, valida los campos obligatorios
+ * y envía la petición de alta de nuevo usuario a la API.
+ *
+ * @returns {Promise<void>}
+ */
 export async function crearUsuario() {
     const nombre   = document.getElementById('uNombre').value.trim();
     const username = document.getElementById('uUsername').value.trim();
@@ -95,7 +110,6 @@ export async function crearUsuario() {
     const password = document.getElementById('uPassword').value.trim();
     const id_rol   = document.getElementById('uRol').value;
 
-    // 👈 Reemplazamos mostrarAlerta por mostrarToast
     if (!nombre || !username || !correo || !password || !id_rol) {
         mostrarToast('Completa todos los campos obligatorios.', 'error');
         return;
@@ -114,22 +128,27 @@ export async function crearUsuario() {
         const data = await res.json();
         if (data.success) {
             cerrarModalUsuario();
-            mostrarToast('Usuario creado correctamente.', 'success'); // 👈
+            mostrarToast('Usuario creado correctamente.', 'success');
             cargarUsuarios();
         } else {
-            mostrarToast(data.message, 'error'); // 👈
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
+        mostrarToast('No se pudo conectar con el servidor.', 'error');
     } finally {
         btn.textContent = 'Crear usuario';
         btn.disabled    = false;
     }
 }
 
-// ── Eliminar usuario (Lógica Unificada) ────────────────────
+/**
+ * Solicita confirmación al usuario y, si acepta, elimina el usuario de forma permanente.
+ *
+ * @param {number} id - ID del usuario a eliminar.
+ * @param {string} nombre - Nombre del usuario, usado en el mensaje de confirmación.
+ * @returns {Promise<void>}
+ */
 export async function confirmarEliminarUsuario(id, nombre) {
-    // 👈 Modal dinámico global
     const confirmado = await confirmarAccionGlobal(
         'Eliminar Usuario',
         `¿Estás seguro de que deseas eliminar permanentemente al usuario ${nombre}?`
@@ -140,27 +159,35 @@ export async function confirmarEliminarUsuario(id, nombre) {
     try {
         const res  = await fetch(`${API_BASE_URL}/api/usuarios/${id}`, { method: 'DELETE' });
         const data = await res.json();
-        
+
         if (data.success) {
-            mostrarToast('Usuario eliminado correctamente.', 'success'); // 👈
+            mostrarToast('Usuario eliminado correctamente.', 'success');
             cargarUsuarios();
         } else {
-            mostrarToast(data.message, 'error'); // 👈
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
+        mostrarToast('No se pudo conectar con el servidor.', 'error');
     }
 }
 
-// ── Editar usuario ─────────────────────────────────────────
+/**
+ * Abre el modal de edición y precarga los datos del usuario indicado.
+ *
+ * @param {number} id - ID del usuario a editar.
+ * @param {string} nombre - Nombre completo del usuario.
+ * @param {string} username - Nombre de usuario.
+ * @param {string} correo - Correo electrónico.
+ * @param {number} idRol - ID del rol actualmente asignado.
+ */
 export function abrirEditarUsuario(id, nombre, username, correo, idRol) {
     document.getElementById('eId').value       = id;
     document.getElementById('eNombre').value   = nombre;
     document.getElementById('eUsername').value = username;
     document.getElementById('eCorreo').value   = correo;
     document.getElementById('ePassword').value = '';
-    
-    // Reusar roles ya cargados en el select de creación
+
+    // Reutiliza las opciones del select de creación para evitar una petición adicional.
     const selectE = document.getElementById('eRol');
     const selectC = document.getElementById('uRol');
     if (selectE && selectC) {
@@ -170,10 +197,18 @@ export function abrirEditarUsuario(id, nombre, username, correo, idRol) {
     document.getElementById('editUserModal').classList.add('open');
 }
 
+// Cierra el modal de edición de usuario.
 export function cerrarEditarModal() {
     document.getElementById('editUserModal').classList.remove('open');
 }
 
+/**
+ * Lee los campos del modal de edición, valida los campos obligatorios
+ * y envía la petición de actualización a la API.
+ * Si se ingresa contraseña, se incluye en el body; si no, se omite.
+ *
+ * @returns {Promise<void>}
+ */
 export async function guardarEdicion() {
     const id       = document.getElementById('eId').value;
     const nombre   = document.getElementById('eNombre').value.trim();
@@ -182,7 +217,6 @@ export async function guardarEdicion() {
     const id_rol   = document.getElementById('eRol').value;
     const password = document.getElementById('ePassword').value.trim();
 
-    // 👈 Reemplazamos mostrarAlerta
     if (!nombre || !username || !correo || !id_rol) {
         mostrarToast('Completa todos los campos obligatorios.', 'error');
         return;
@@ -204,20 +238,22 @@ export async function guardarEdicion() {
         const data = await res.json();
         if (data.success) {
             cerrarEditarModal();
-            mostrarToast('Usuario actualizado correctamente.', 'success'); // 👈
+            mostrarToast('Usuario actualizado correctamente.', 'success');
             cargarUsuarios();
         } else {
-            mostrarToast(data.message, 'error'); // 👈
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
+        mostrarToast('No se pudo conectar con el servidor.', 'error');
     } finally {
         btn.textContent = 'Guardar cambios';
         btn.disabled    = false;
     }
 }
 
-// ── Modales ────────────────────────────────────────────────
+/**
+ * Limpia los campos del formulario de creación y abre el modal de nuevo usuario.
+ */
 export function abrirModalUsuario() {
     ['uNombre', 'uUsername', 'uCorreo', 'uPassword'].forEach(id => {
         const el = document.getElementById(id);
@@ -228,6 +264,7 @@ export function abrirModalUsuario() {
     document.getElementById('userModal').classList.add('open');
 }
 
+// Cierra el modal de creación de usuario.
 export function cerrarModalUsuario() {
     document.getElementById('userModal').classList.remove('open');
 }

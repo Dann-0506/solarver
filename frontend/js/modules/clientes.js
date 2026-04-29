@@ -1,12 +1,13 @@
 /**
- * Archivo: frontend/js/modules/clientes.js
- * Propósito: Gestión de clientes — tabla, búsqueda, perfil, CRUD.
- * Usado por admin y empleado (con permisos distintos).
+ * Módulo de gestión de clientes.
+ *
+ * Maneja la carga, búsqueda, paginación y CRUD de clientes en el
+ * dashboard. El acceso a edición y eliminación está restringido a
+ * usuarios con rol de administrador.
  */
 
 import { API_BASE_URL } from '../core/api.js';
 import { esAdmin, getUsuario } from '../core/auth.js';
-// 👈 Importamos nuestras nuevas utilidades
 import { getIniciales, renderPagBtns, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
 const PER_PAGE = 7;
@@ -16,7 +17,11 @@ let currentPage  = 1;
 let activeFilter = null;
 let editingId    = null;
 
-// ── Cargar clientes desde API ──────────────────────────────
+/**
+ * Carga la lista de clientes desde la API y reinicia la vista de la tabla.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarClientes() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
@@ -37,7 +42,9 @@ export async function cargarClientes() {
     }
 }
 
-// ── Renderizar página actual ───────────────────────────────
+/**
+ * Renderiza la página actual de la tabla según `filteredData` y `currentPage`.
+ */
 function renderPage() {
     const tbody  = document.getElementById('tableBody');
     const admin  = esAdmin();
@@ -63,8 +70,8 @@ function renderPage() {
         const status = (c.Estatus || 'pendiente').toLowerCase();
         const st     = statusMap[status] || 'pendiente';
         const interes = parseFloat(c.Interes_Acumulado) || 0;
-        const alertIcon = interes > 0 
-            ? `<span title="Tiene $${interes.toLocaleString('es-MX', { minimumFractionDigits: 2 })} en recargos" style="color:var(--error); margin-left:6px; font-size:.85rem; cursor:help;">⚠️</span>` 
+        const alertIcon = interes > 0
+            ? `<span title="Tiene $${interes.toLocaleString('es-MX', { minimumFractionDigits: 2 })} en recargos" style="color:var(--error); margin-left:6px; font-size:.85rem; cursor:help;">⚠️</span>`
             : '';
         return `<tr>
           <td><div class="client-cell">
@@ -98,7 +105,9 @@ function renderPage() {
     renderPagBtns('pagBtns', pages, currentPage, 'window._cambiarPaginaClientes');
 }
 
-// ── Búsqueda y filtros ─────────────────────────────────────
+/**
+ * Filtra la tabla según el texto del campo de búsqueda y el filtro de día activo.
+ */
 export function filterTable() {
     const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
     filteredData = allClients.filter(c =>
@@ -112,6 +121,11 @@ export function filterTable() {
     renderPage();
 }
 
+/**
+ * Activa o desactiva el filtro por día de pago y reaplica los filtros.
+ *
+ * @param {number} day - Día del mes a filtrar (p. ej. 5 o 17).
+ */
 export function toggleFilter(day) {
     activeFilter = activeFilter === day ? null : day;
     const btn5  = document.getElementById('filter5');
@@ -121,6 +135,9 @@ export function toggleFilter(day) {
     filterTable();
 }
 
+/**
+ * Limpia el campo de búsqueda y todos los filtros activos, restaurando la lista completa.
+ */
 export function clearFilters() {
     activeFilter = null;
     const search = document.getElementById('searchInput');
@@ -134,6 +151,11 @@ export function clearFilters() {
     renderPage();
 }
 
+/**
+ * Cambia la página visible de la tabla.
+ *
+ * @param {number} p - Número de página destino (base 1).
+ */
 export function cambiarPagina(p) {
     const pages = Math.ceil(filteredData.length / PER_PAGE) || 1;
     if (p < 1 || p > pages) return;
@@ -141,7 +163,12 @@ export function cambiarPagina(p) {
     renderPage();
 }
 
-// ── Stats ──────────────────────────────────────────────────
+/**
+ * Carga y actualiza las tarjetas de estadísticas del dashboard
+ * (clientes activos, pendientes, atrasados y cobros acumulados).
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarStats() {
     try {
         const res  = await fetch(`${API_BASE_URL}/api/clientes`);
@@ -161,7 +188,12 @@ export async function cargarStats() {
     } catch (e) { console.error('Error stats:', e); }
 }
 
-// ── Perfil del cliente ─────────────────────────────────────
+/**
+ * Abre el modal de perfil de un cliente y carga su historial de pagos desde la API.
+ *
+ * @param {number} id - ID del cliente a mostrar.
+ * @returns {Promise<void>}
+ */
 export async function abrirPerfilCliente(id) {
     const c = allClients.find(x => x.Id_Cliente === id);
     if (!c) return;
@@ -182,11 +214,11 @@ export async function abrirPerfilCliente(id) {
     set('#profileModal .p-mensualidad', '$' + mensualidad.toLocaleString('es-MX', { minimumFractionDigits: 2 }));
     set('#profileModal .p-interes', intereses > 0 ? '$' + intereses.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '$0.00');
 
-    const gridEl = document.querySelector('#profileModal .form-grid') || document.querySelector('#profileModal > div:nth-child(4)'); 
+    const gridEl = document.querySelector('#profileModal .form-grid') || document.querySelector('#profileModal > div:nth-child(4)');
     if(gridEl) {
         const oldMsg = gridEl.querySelector('.interes-msg');
         if(oldMsg) oldMsg.remove();
-        
+
         if(intereses > 0) {
             gridEl.insertAdjacentHTML('beforeend', `<div class="interes-msg" style="grid-column: 1 / -1; margin-top: 8px; padding: 10px 14px; background: #FDECEA; color: var(--error); border-radius: 8px; font-weight: 600; border-left: 3px solid var(--error);">Incluye recargos por mora: $${intereses.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</div>`);
         }
@@ -194,7 +226,7 @@ export async function abrirPerfilCliente(id) {
 
     const initEl = document.getElementById('pInitials');
     if (initEl) initEl.textContent = ini;
-    
+
     const debtEl = document.getElementById('pDebt');
     if (debtEl) {
         debtEl.textContent = deuda > 0 ? '$' + deuda.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : 'Saldado';
@@ -203,15 +235,15 @@ export async function abrirPerfilCliente(id) {
             debtEl.title = "Incluye recargos por intereses moratorios";
         } else {
             debtEl.title = "";
-        }    
+        }
     }
-    
+
     const stEl = document.getElementById('pStatus');
     if (stEl) {
         stEl.textContent = st.charAt(0).toUpperCase() + st.slice(1);
         stEl.className   = `badge-status status-${st}`;
     }
-    
+
     const tbodyP = document.querySelector('#profileModal .pagos-tbody');
     if (tbodyP) {
         tbodyP.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--muted)">Cargando...</td></tr>';
@@ -236,14 +268,20 @@ export async function abrirPerfilCliente(id) {
     document.getElementById('profileModal').classList.add('open');
 }
 
+// Cierra el modal de perfil del cliente.
 export function cerrarPerfilModal() {
     document.getElementById('profileModal').classList.remove('open');
 }
 
-// ── Crear / Editar cliente ─────────────────────────────────
+/**
+ * Abre el modal de creación o edición de cliente y precarga los datos si corresponde.
+ *
+ * @param {'crear'|'editar'} [modo='crear'] - Modo de operación del modal.
+ * @param {number|null} [id=null] - ID del cliente a editar. Solo aplica en modo 'editar'.
+ */
 export function abrirModalCliente(modo = 'crear', id = null) {
     editingId = modo === 'editar' ? id : null;
-    
+
     const titulo = document.getElementById('clienteModalTitulo');
     if (titulo) titulo.textContent = modo === 'editar' ? 'Editar cliente' : 'Nuevo cliente';
     if (modo === 'crear') {
@@ -271,11 +309,18 @@ export function abrirModalCliente(modo = 'crear', id = null) {
     document.getElementById('clienteModal').classList.add('open');
 }
 
+// Cierra el modal de creación/edición y limpia el estado de edición activo.
 export function cerrarModalCliente() {
     document.getElementById('clienteModal').classList.remove('open');
     editingId = null;
 }
 
+/**
+ * Lee los campos del formulario, valida los campos obligatorios y envía la
+ * petición de creación o actualización del cliente según `editingId`.
+ *
+ * @returns {Promise<void>}
+ */
 export async function guardarCliente() {
     const nombre       = document.getElementById('cNombre')?.value.trim();
     const identificacion = document.getElementById('cIdentificacion')?.value.trim();
@@ -287,7 +332,6 @@ export async function guardarCliente() {
     const plazo_meses  = document.getElementById('cPlazo')?.value;
     const usuario      = getUsuario();
 
-    // 👈 Reemplazamos alertas por Toasts
     if (!nombre || !fecha_pago) {
         mostrarToast('Nombre y fecha de pago son obligatorios.', 'error');
         return;
@@ -304,9 +348,9 @@ export async function guardarCliente() {
         const url    = editingId ? `${API_BASE_URL}/api/clientes/${editingId}` : `${API_BASE_URL}/api/clientes`;
         const method = editingId ? 'PUT' : 'POST';
         const body   = { nombre, correo, telefono, direccion, fecha_pago: parseInt(fecha_pago), id_usuario: usuario?.id };
-        if (!editingId) { 
-            body.identificacion = identificacion; 
-            body.deuda_inicial = parseFloat(deuda_inicial) || 0; 
+        if (!editingId) {
+            body.identificacion = identificacion;
+            body.deuda_inicial = parseFloat(deuda_inicial) || 0;
             body.plazo_meses = parseInt(plazo_meses) || 12;
         }
 
@@ -314,42 +358,47 @@ export async function guardarCliente() {
         const data = await res.json();
         if (data.success) {
             cerrarModalCliente();
-            mostrarToast(`Cliente ${editingId ? 'actualizado' : 'registrado'} correctamente.`, 'success'); // 👈
+            mostrarToast(`Cliente ${editingId ? 'actualizado' : 'registrado'} correctamente.`, 'success');
             cargarClientes();
             cargarStats();
         } else {
-            mostrarToast(data.message, 'error'); // 👈
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
+        mostrarToast('No se pudo conectar con el servidor.', 'error');
     } finally {
         if (btn) { btn.textContent = 'Guardar'; btn.disabled = false; }
     }
 }
 
-// ── Eliminar cliente (Lógica Unificada con el Global Modal) ──
+/**
+ * Solicita confirmación al usuario y, si acepta, elimina el cliente de forma permanente.
+ *
+ * @param {number} id - ID del cliente a eliminar.
+ * @param {string} nombre - Nombre del cliente, usado en el mensaje de confirmación.
+ * @returns {Promise<void>}
+ */
 export async function confirmarEliminarCliente(id, nombre) {
-    // 👈 Creamos el modal dinámico
     const confirmado = await confirmarAccionGlobal(
         'Eliminar Cliente',
         `¿Estás seguro de que deseas eliminar permanentemente a ${nombre}?\nSe perderá todo su historial.`
     );
-    
+
     if (!confirmado) return;
 
     try {
         const res  = await fetch(`${API_BASE_URL}/api/clientes/${id}`, { method: 'DELETE' });
         const data = await res.json();
-        
+
         if (data.success) {
-            mostrarToast('Cliente eliminado correctamente.', 'success'); // 👈
+            mostrarToast('Cliente eliminado correctamente.', 'success');
             cargarClientes();
             cargarStats();
         } else {
-            mostrarToast(data.message, 'error'); // 👈
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
+        mostrarToast('No se pudo conectar con el servidor.', 'error');
     }
 }
 

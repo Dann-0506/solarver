@@ -1,31 +1,43 @@
 /**
- * Archivo: frontend/js/modules/reportes.js
- * Propósito: Generación de reportes de pagos pendientes y atrasados (US-12).
+ * Módulo de generación y exportación de reportes de cobranza e ingresos.
+ *
+ * Gestiona la vista previa de datos (clientes al corriente, con abono pendiente
+ * e ingresos mensuales), la descarga en PDF/Excel y el envío masivo de estados
+ * de cuenta por correo electrónico.
  */
 
 import { API_BASE_URL } from '../core/api.js';
-import { mostrarToast, confirmarAccionGlobal } from '../core/utils.js'; // 👈 Importamos nuestras utilidades
+import { mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
-let _reporteActual     = 'faltan';
-let _reporteData        = [];
-let _pagaron            = [];
-let _faltan             = [];
-let _pagosRealizados    = [];
+let _reporteActual  = 'faltan';
+let _reporteData    = [];
+let _pagaron        = [];
+let _faltan         = [];
+let _pagosRealizados = [];
 
+/**
+ * Inicializa los campos de fecha del filtro con el rango del último mes,
+ * solo si aún no tienen valor.
+ */
 export function inicializarFechasReporte() {
     const inputInicio = document.getElementById('filtroFechaInicio');
     const inputFin = document.getElementById('filtroFechaFin');
-    
+
     if (inputInicio && inputFin && !inputInicio.value) {
         const hoy = new Date();
         const haceUnMes = new Date();
         haceUnMes.setMonth(hoy.getMonth() - 1);
-        
+
         inputFin.value = hoy.toISOString().split('T')[0];
         inputInicio.value = haceUnMes.toISOString().split('T')[0];
     }
 }
 
+/**
+ * Obtiene desde la API el estado mensual de clientes: quiénes pagaron y quiénes faltan.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarDatosReporte() {
     try {
         const res  = await fetch(`${API_BASE_URL}/api/reportes/estado-mensual`);
@@ -39,6 +51,13 @@ export async function cargarDatosReporte() {
     }
 }
 
+/**
+ * Cambia la vista del subreporte entre "pagaron" y "faltan",
+ * actualizando la tabla, el resumen y los botones de selección.
+ *
+ * @param {'pagaron'|'faltan'} tipo - Categoría de clientes a mostrar.
+ * @returns {Promise<void>}
+ */
 export async function mostrarSubreporte(tipo) {
     _reporteActual = tipo;
     const tbody = document.getElementById('reporteTableBody');
@@ -47,13 +66,13 @@ export async function mostrarSubreporte(tipo) {
 
     const estiloActivo   = 'padding:9px 20px;border-radius:10px;border:none;font-size:.84rem;font-weight:600;cursor:pointer;font-family:\'Sora\',sans-serif;background:var(--orange);color:white;box-shadow:0 4px 12px rgba(255,122,31,0.3)';
     const estiloInactivo = 'padding:9px 20px;border-radius:10px;border:1.5px solid var(--border);font-size:.84rem;font-weight:600;cursor:pointer;font-family:\'Sora\',sans-serif;background:white;color:var(--text)';
-    
+
     const btnFaltan  = document.getElementById('btnSubFaltan');
     const btnPagaron = document.getElementById('btnSubPagaron');
     if (btnFaltan)  btnFaltan.style.cssText  = tipo === 'faltan'  ? estiloActivo : estiloInactivo;
     if (btnPagaron) btnPagaron.style.cssText = tipo === 'pagaron' ? estiloActivo : estiloInactivo;
 
-    // Cargar datos del servidor si las listas están vacías
+    // Carga diferida: solo consulta el servidor si ambas listas están vacías.
     if (_pagaron.length === 0 && _faltan.length === 0) {
         await cargarDatosReporte();
     }
@@ -64,7 +83,7 @@ export async function mostrarSubreporte(tipo) {
     const totalDeuda = clientes.reduce((s, c) => s + (parseFloat(c.Saldo_Pendiente) || 0), 0);
     const tituloEl   = document.getElementById('reporteTitulo');
     const conteoEl   = document.getElementById('reporteConteo');
-    
+
     if (tituloEl) tituloEl.textContent = tipo === 'pagaron' ? 'Clientes al corriente (Este mes)' : 'Clientes con abono pendiente (Este mes)';
     if (conteoEl) conteoEl.textContent = `(${clientes.length} clientes)`;
 
@@ -108,11 +127,18 @@ export async function mostrarSubreporte(tipo) {
       </tr>`).join('');
 }
 
+/**
+ * Descarga el reporte activo en el formato indicado (PDF o Excel).
+ *
+ * @param {'pdf'|'excel'} formato - Formato de exportación solicitado.
+ * @returns {Promise<void>}
+ */
 export async function descargarReporte(formato) {
     const tipo = document.getElementById('selTipoReporte').value;
+    // TODO: revisar comportamiento — obtiene el botón del objeto global `event` en lugar de recibirlo como parámetro.
     const btn = event.target;
     const originalText = btn.textContent;
-    
+
     btn.disabled = true;
     btn.textContent = 'Generando...';
 
@@ -121,34 +147,40 @@ export async function descargarReporte(formato) {
         const fin = document.getElementById('filtroFechaFin').value;
         const url = `${API_BASE_URL}/api/reportes/exportar?tipo=${tipo}&formato=${formato}&inicio=${inicio}&fin=${fin}`;
         const res = await fetch(url);
-        
+
         if (!res.ok) {
             const errorData = await res.json();
             throw new Error(errorData.message || 'Error al generar el reporte');
         }
 
-        // Manejo de respuesta binaria (Blob)
+        // Descarga mediante enlace temporal para no abrir ventanas emergentes.
         const blob = await res.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        
+
         a.href = downloadUrl;
         const extension = formato === 'excel' ? 'xlsx' : 'pdf';
         a.download = `SolarVer_Cobranza_${tipo}_${new Date().toISOString().slice(0,10)}.${extension}`;
-        
+
         document.body.appendChild(a);
         a.click();
         a.remove();
         window.URL.revokeObjectURL(downloadUrl);
 
     } catch (e) {
-        mostrarToast("Error: " + e.message, 'error'); // 👈 Reemplazamos alert
+        mostrarToast("Error: " + e.message, 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = originalText;
     }
 }
 
+/**
+ * Actualiza la vista de la tabla de reporte según el tipo seleccionado y el rango de fechas.
+ * Para el tipo "realizados" muestra ingresos; para los demás, datos de cobranza mensual.
+ *
+ * @returns {Promise<void>}
+ */
 export async function actualizarVistaReporte() {
     inicializarFechasReporte();
 
@@ -169,8 +201,8 @@ export async function actualizarVistaReporte() {
             const res = await fetch(`${API_BASE_URL}/api/reportes/ingresos-mensuales?inicio=${inicio}&fin=${fin}`);
             const data = await res.json();
             if (data.success) _pagosRealizados = data.pagos;
-        } catch (e) { 
-            console.error('Error cargando pagos:', e); 
+        } catch (e) {
+            console.error('Error cargando pagos:', e);
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:red">Error al cargar los datos</td></tr>';
             return;
         }
@@ -237,7 +269,7 @@ export async function actualizarVistaReporte() {
         `;
 
         let datosAmostrar = [];
-        
+
         if (tipo === 'integral') {
             datosAmostrar = [..._pagaron, ..._faltan];
         } else if (tipo === 'pendiente') {
@@ -286,22 +318,27 @@ export async function actualizarVistaReporte() {
     }
 }
 
+/**
+ * Solicita confirmación y envía por correo los estados de cuenta de la lista activa.
+ *
+ * @returns {Promise<void>}
+ */
 export async function enviarEstadosDeCuenta() {
     const tipo = document.getElementById('selTipoReporte').value;
-    
+
     if (tipo === 'realizados') {
-        mostrarToast("Esta acción solo está disponible para reportes de cobranza.", 'warning'); // 👈 Reemplazamos alert
+        mostrarToast("Esta acción solo está disponible para reportes de cobranza.", 'warning');
         return;
     }
 
-    // 👈 Reemplazamos el confirm nativo por nuestra versión asíncrona y elegante
     const confirmacion = await confirmarAccionGlobal(
-        'Confirmar Envío Masivo', 
+        'Confirmar Envío Masivo',
         `¿Deseas enviar los Estados de Cuenta en PDF por correo a la lista de "${tipo.toUpperCase()}"?`
     );
-    
+
     if (!confirmacion) return;
 
+    // TODO: revisar comportamiento — obtiene el botón del objeto global `event` en lugar de recibirlo como parámetro.
     const btn = event.target;
     const textoOriginal = btn.textContent;
     btn.disabled = true;
@@ -314,22 +351,22 @@ export async function enviarEstadosDeCuenta() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tipo: tipo })
         });
-        
+
         const data = await res.json();
         if (data.success) {
-            mostrarToast(data.message, 'success'); // 👈 Reemplazamos alert de éxito
+            mostrarToast(data.message, 'success');
         } else {
-            mostrarToast(data.message, 'error'); // 👈 Reemplazamos alert de advertencia/error
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarToast("Error de conexión al enviar: " + e.message, 'error'); // 👈 Reemplazamos alert de catch
+        mostrarToast("Error de conexión al enviar: " + e.message, 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = textoOriginal;
     }
 }
 
-window.enviarEstadosDeCuenta = enviarEstadosDeCuenta;
+window.enviarEstadosDeCuenta  = enviarEstadosDeCuenta;
 window.actualizarVistaReporte = actualizarVistaReporte;
-window.mostrarSubreporte = mostrarSubreporte;
-window.descargarReporte = descargarReporte;
+window.mostrarSubreporte      = mostrarSubreporte;
+window.descargarReporte       = descargarReporte;

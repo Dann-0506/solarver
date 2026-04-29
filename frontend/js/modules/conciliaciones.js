@@ -1,22 +1,33 @@
+/**
+ * Módulo de conciliación bancaria.
+ *
+ * Permite revisar, confirmar y conciliar en forma individual o masiva
+ * las transferencias pendientes de aplicar como pagos en el sistema.
+ */
+
 import { API_BASE_URL } from '../core/api.js';
-// 👈 Importamos nuestras nuevas utilidades y quitamos mostrarAlerta
 import { mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
+/**
+ * Carga las transferencias pendientes de conciliar y las muestra en la tabla.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarConciliaciones() {
     const tbody = document.getElementById('conciliacionesTableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--muted)">Cargando datos...</td></tr>';
-    
-    // Resetear el estado de la vista masiva
+
+    // Reinicia el estado del checkbox maestro antes de repintar la tabla.
     const chkAll = document.getElementById('chkAllConcil');
     if (chkAll) chkAll.checked = false;
     verificarSeleccionMasiva();
-    
+
     try {
         const res = await fetch(`${API_BASE_URL}/api/conciliaciones/pendientes`);
         const data = await res.json();
-        
+
         if (!data.success || !data.pendientes.length) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--muted); font-style:italic">No hay transferencias pendientes de conciliar. 🎉</td></tr>';
             return;
@@ -47,26 +58,30 @@ export async function cargarConciliaciones() {
     }
 }
 
-// -- Conciliación Uno a Uno --
+/**
+ * Solicita confirmación y registra manualmente el pago de una referencia individual.
+ *
+ * @param {number} id_referencia - ID de la referencia de pago a conciliar.
+ * @param {string} clave - Clave de referencia bancaria, usada en el mensaje de confirmación.
+ * @returns {Promise<void>}
+ */
 export async function conciliarManual(id_referencia, clave) {
-    // 👈 Reemplazamos el confirm nativo por el modal asíncrono
     const confirmado = await confirmarAccionGlobal(
         'Confirmar Conciliación',
         `¿Estás 100% seguro de registrar manualmente el pago para la referencia ${clave}?`
     );
     if (!confirmado) return;
-    
+
     try {
-        const res = await fetch(`${API_BASE_URL}/api/conciliaciones/manual/${id_referencia}`, { 
+        const res = await fetch(`${API_BASE_URL}/api/conciliaciones/manual/${id_referencia}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
         const data = await res.json();
-        
+
         if (data.success) {
-            // 👈 Reemplazamos mostrarAlerta por mostrarToast
-            mostrarToast('Pago registrado exitosamente.', 'success'); 
-            cargarConciliaciones(); 
+            mostrarToast('Pago registrado exitosamente.', 'success');
+            cargarConciliaciones();
         } else {
             mostrarToast(data.message, 'error');
         }
@@ -76,16 +91,25 @@ export async function conciliarManual(id_referencia, clave) {
     }
 }
 
+/**
+ * Marca o desmarca todos los checkboxes de la tabla de conciliaciones.
+ *
+ * @param {HTMLInputElement} source - Checkbox maestro cuyo estado se propaga al resto.
+ */
 export function toggleAllConcil(source) {
     const checkboxes = document.querySelectorAll('.chk-concil');
     checkboxes.forEach(chk => chk.checked = source.checked);
     verificarSeleccionMasiva();
 }
 
+/**
+ * Actualiza el estado y etiqueta del botón de conciliación masiva
+ * según la cantidad de filas seleccionadas.
+ */
 export function verificarSeleccionMasiva() {
     const checkboxes = document.querySelectorAll('.chk-concil:checked');
     const btnMasivo = document.getElementById('btnConciliarMasivo');
-    
+
     if (btnMasivo) {
         btnMasivo.disabled = checkboxes.length === 0;
         if (checkboxes.length > 0) {
@@ -98,33 +122,36 @@ export function verificarSeleccionMasiva() {
     }
 }
 
+/**
+ * Solicita confirmación y registra en lote todas las referencias seleccionadas.
+ *
+ * @returns {Promise<void>}
+ */
 export async function conciliarMasivo() {
     const checkboxes = document.querySelectorAll('.chk-concil:checked');
     const referencias = Array.from(checkboxes).map(chk => parseInt(chk.value));
-    
+
     if (referencias.length === 0) return;
-    
-    // 👈 Reemplazamos el confirm nativo por el modal asíncrono
+
     const confirmado = await confirmarAccionGlobal(
         'Conciliación Masiva',
         `¿Estás seguro de registrar manualmente los ${referencias.length} pagos seleccionados?`
     );
     if (!confirmado) return;
-    
+
     const btnMasivo = document.getElementById('btnConciliarMasivo');
     btnMasivo.innerText = 'Procesando...';
     btnMasivo.disabled = true;
 
     try {
-        const res = await fetch(`${API_BASE_URL}/api/conciliaciones/manual/masivo`, { 
+        const res = await fetch(`${API_BASE_URL}/api/conciliaciones/manual/masivo`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ referencias })
         });
         const data = await res.json();
-        
+
         if (data.success) {
-            // 👈 Reemplazamos mostrarAlerta por mostrarToast
             mostrarToast(data.message, 'success');
             cargarConciliaciones();
         } else {
@@ -138,8 +165,8 @@ export async function conciliarMasivo() {
     }
 }
 
-window._cargarConciliaciones = cargarConciliaciones;
-window._conciliarManual = conciliarManual;
-window._toggleAllConcil = toggleAllConcil;
-window._verificarSeleccionMasiva = verificarSeleccionMasiva;
-window._conciliarMasivo = conciliarMasivo;
+window._cargarConciliaciones     = cargarConciliaciones;
+window._conciliarManual           = conciliarManual;
+window._toggleAllConcil           = toggleAllConcil;
+window._verificarSeleccionMasiva  = verificarSeleccionMasiva;
+window._conciliarMasivo           = conciliarMasivo;
