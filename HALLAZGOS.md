@@ -1,7 +1,7 @@
 # Hallazgos técnicos — backend/routes/
 
 Registrados durante la tarea de documentación de `backend/routes/`.  
-Ningún ítem fue corregido; todos están pendientes de decisión y acción.
+Todos están pendientes de decisión y acción.
 
 ---
 
@@ -21,44 +21,7 @@ Cualquier cuenta que no tenga su contraseña migrada a bcrypt puede autenticarse
 
 ---
 
-## 2. Código duplicado — Lógica de conciliación
-
-**Archivos:** `conciliaciones.py`  
-**Funciones:** `conciliar_manual()`, `conciliar_masivo()`
-
-Ambas funciones ejecutan exactamente los mismos pasos en el mismo orden:
-1. `SELECT nextval('folio_seq')` → generar folio `FOL-MAN-N`
-2. `INSERT INTO "PAGO"` con método `'Conciliación'`
-3. `UPDATE "REFERENCIAPAGO"` → estado `'Conciliado_Manual'`
-4. `SELECT "Saldo_Pendiente"` → calcular nuevo saldo
-5. `UPDATE "DEUDA"` → actualizar saldo y estatus
-
-La única diferencia es que `conciliar_masivo` itera sobre una lista y omite referencias no encontradas (`continue`). Un bug corregido en una función deberá replicarse manualmente en la otra.
-
-**Acción sugerida:** extraer un helper privado `_procesar_referencia(cursor, id_ref)` y llamarlo desde ambas rutas.
-
----
-
-## 3. Código duplicado — Generación de folio
-
-**Archivos:** `pagos.py`, `conciliaciones.py`, `webhooks.py`  
-**Patrón repetido:** `SELECT nextval('folio_seq') AS num`
-
-La misma consulta para consumir la secuencia de folios aparece en 5 puntos:
-
-| Archivo | Función | Prefijo de folio |
-|---|---|---|
-| `pagos.py` | `siguiente_folio()` | `FOL-N` |
-| `pagos.py` | `registrar_pago()` | `FOL-N` |
-| `conciliaciones.py` | `conciliar_manual()` | `FOL-MAN-N` |
-| `conciliaciones.py` | `conciliar_masivo()` | `FOL-MAN-N` |
-| `webhooks.py` | `recibir_pago_automatico()` | `FOL-AUTO-N` / `FOL-HUERF-N` |
-
-**Acción sugerida:** centralizar en un helper `generar_folio(cursor, prefijo="FOL")` en `db.py` o en un servicio compartido.
-
----
-
-## 4. Ruta de historial fuera de su módulo
+## 2. Ruta de historial fuera de su módulo
 
 **Archivo:** `recordatorios.py`  
 **Función:** `get_historial()`  
@@ -70,7 +33,7 @@ Esta función retorna el historial de cambios del sistema (`HISTORIALCAMBIOS`) y
 
 ---
 
-## 5. Función con dos métodos HTTP en una sola firma
+## 3. Función con dos métodos HTTP en una sola firma
 
 **Archivos:** `usuarios.py`, `respaldos.py`  
 **Funciones:** `gestionar_usuario()` (PUT + DELETE), `config_respaldos()` (GET + POST)
@@ -81,7 +44,7 @@ Las dos funciones manejan verbos HTTP distintos con lógica completamente separa
 
 ---
 
-## 6. Finales de línea mixtos (CRLF / LF)
+## 4. Finales de línea mixtos (CRLF / LF)
 
 **Archivos:** `clientes.py`, `recordatorios.py`
 
@@ -91,43 +54,14 @@ Git reporta que estos dos archivos tienen finales de línea CRLF, distintos al r
 
 ---
 
-## 7. Autenticación por parámetro URL en descarga de respaldos
-
-**Archivo:** `respaldos.py`  
-**Función:** `descargar_respaldo()`  
-**Ruta:** `GET /api/respaldos/descargar/<nombre>?u=<username>`
-
-El username del administrador viaja en la URL en texto claro (`?u=...`). Esto lo expone en logs del servidor, historial del navegador y encabezados `Referer`.
-
-**Acción sugerida:** evaluar una solución de descarga con token de corta duración (pre-signed URL o token JWT de un solo uso) en lugar del username directamente en la query string.
-
----
-
-## 8. Estatus de deuda simplificado en conciliación
-
-**Archivos:** `conciliaciones.py`, `webhooks.py`
-
-Al actualizar la deuda tras una conciliación, el estatus calculado es únicamente `'pagado'` o `'pendiente'`:
-
-```python
-nuevo_estatus = 'pagado' if nuevo_saldo <= 0 else 'pendiente'
-```
-
-En cambio, `registrar_pago()` en `pagos.py` incluye la lógica completa (considera `'atrasado'` según el día del corte y el monto pagado en el periodo). Las conciliaciones nunca producen el estatus `'atrasado'` aunque el pago llegue tarde.
-
-**Acción sugerida:** alinear la lógica de estatus de los tres flujos de pago (manual, conciliación, webhook), o documentar intencionalmente que los pagos conciliados siempre resetean a `'pendiente'` si hay saldo.
-
----
-
 # Hallazgos técnicos — backend/services/
 
 Registrados durante la tarea de documentación de `backend/services/`.  
-Ningún ítem fue corregido; todos están pendientes de decisión y acción.
-El hallazgo 12 ya está marcado con `# FIXME` en el código.
+Todos están pendientes de decisión y acción.
 
 ---
 
-## 9. Importación sin usar en notificaciones_service
+## 5. Importación sin usar en notificaciones_service
 
 **Archivo:** `notificaciones_service.py`  
 **Línea:** `from reportlab.lib.pagesizes import letter`
@@ -138,7 +72,7 @@ Este import existe en el archivo pero `letter` no se usa en ningún punto de `no
 
 ---
 
-## 10. `except` desnudo en generar_excel_reporte
+## 6. `except` desnudo en generar_excel_reporte
 
 **Archivo:** `documentos_service.py`  
 **Función:** `generar_excel_reporte()`
@@ -154,7 +88,7 @@ except:
 
 ---
 
-## 11. Commit por cliente dentro del loop en procesar_cobros_automaticos
+## 7. Commit por cliente dentro del loop en procesar_cobros_automaticos
 
 **Archivo:** `scheduler_service.py`  
 **Función:** `procesar_cobros_automaticos()`
@@ -165,26 +99,14 @@ La función hace `conn.commit()` dentro del `for` por cada cliente procesado. Si
 
 ---
 
-## 12. Posible NameError en validar_telefono
-
-**Archivo:** `validators_service.py`  
-**Función:** `validar_telefono()`  
-**Marcador en código:** `# FIXME` (línea ~124)
-
-El bloque `except Exception as e:` retorna `True, tel_wa`, pero `tel_wa` se define después de `phonenumbers.format_number()`. Si esta llamada lanzara una excepción no prevista, `tel_wa` no estaría definido y se produciría un `NameError` dentro del propio handler.
-
-**Acción sugerida:** inicializar `tel_wa = None` antes del bloque `try`, o separar el `except` genérico del `except NumberParseException` para que solo cubra el bloque de la llamada a la API.
-
----
-
 # Hallazgos técnicos — backend/app.py y backend/db.py
 
 Registrados durante la tarea de documentación de `backend/app.py` y `backend/db.py`.  
-Ningún ítem fue corregido; todos están pendientes de decisión y acción.
+Todos están pendientes de decisión y acción.
 
 ---
 
-## 13. Importación sin usar — psycopg2.extras en db.py
+## 8. Importación sin usar — psycopg2.extras en db.py
 
 **Archivo:** `db.py`  
 **Línea:** `import psycopg2.extras`
@@ -198,11 +120,11 @@ El módulo `psycopg2.extras` se importa en `db.py` pero no se usa en ningún pun
 # Hallazgos técnicos — frontend/js/core/
 
 Registrados durante la tarea de documentación de `frontend/js/core/`.  
-Ningún ítem fue corregido en la lógica; el hallazgo 15 implicó corrección del comentario inconsistente, no del código.
+El hallazgo 10 implicó corrección del comentario inconsistente, no del código.
 
 ---
 
-## 14. Importación sin usar en auth.js
+## 9. Importación sin usar en auth.js
 
 **Archivo:** `auth.js`  
 **Línea:** `import { API_BASE_URL } from './api.js';`
@@ -213,7 +135,7 @@ Ningún ítem fue corregido en la lógica; el hallazgo 15 implicó corrección d
 
 ---
 
-## 15. Inconsistencia entre comentario y código en cargarListasDashboard
+## 10. Inconsistencia entre comentario y código en cargarListasDashboard
 
 **Archivo:** `dashboard_utils.js`  
 **Función:** `cargarListasDashboard()`  
@@ -228,14 +150,15 @@ El comentario original decía `// Limitado a 2 registros`, pero el código aplic
 # Hallazgos técnicos — frontend/js/modules/
 
 Registrados durante la tarea de documentación de `frontend/js/modules/`.  
-Ningún ítem fue corregido (salvo el catch vacío de `respaldos.js`, corregido por instrucción explícita); todos los demás están pendientes de decisión y acción.
+Todos están pendientes de decisión y acción (salvo el catch vacío de `respaldos.js`, corregido por instrucción explícita).
 
 ---
 
-## 16. `event.target` del objeto global en reportes.js
+## 11. `event.target` del objeto global en reportes.js
 
 **Archivo:** `reportes.js`  
-**Funciones:** `descargarReporte()`, `enviarEstadosDeCuenta()`
+**Funciones:** `descargarReporte()`, `enviarEstadosDeCuenta()`  
+**Marcadores en código:** `// TODO: revisar comportamiento` (líneas 138 y 341)
 
 Ambas funciones obtienen la referencia al botón clickeado a través del objeto global `event` en lugar de recibirlo como parámetro. Esta forma de acceder al evento es no estándar, no funciona en entornos con `strict mode` habilitado y complica las pruebas unitarias (habría que simular el objeto global).
 
@@ -252,7 +175,7 @@ y recibir el elemento como segundo parámetro en la función.
 
 ---
 
-## 17. Importación sin usar — getIniciales en recordatorios.js
+## 12. Importación sin usar — getIniciales en recordatorios.js
 
 **Archivo:** `recordatorios.js`  
 **Línea:** `import { getIniciales, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';`
@@ -263,7 +186,7 @@ y recibir el elemento como segundo parámetro en la función.
 
 ---
 
-## 18. Patrón de paginación triplicado en módulos
+## 13. Patrón de paginación triplicado en módulos
 
 **Archivos:** `clientes.js` → `cambiarPagina`, `pagos.js` → `cambiarPaginaPagos`, `historial.js` → `cambiarPaginaHistorial`
 
@@ -277,7 +200,7 @@ function cambiarPagina(p, total, perPage, paginaRef, renderFn) { ... }
 
 ---
 
-## 19. HTML de estado de carga duplicado en múltiples módulos
+## 14. HTML de estado de carga duplicado en múltiples módulos
 
 **Archivos:** `clientes.js`, `pagos.js`, `conciliaciones.js`, `recordatorios.js`, `reportes.js`, `respaldos.js`, `historial.js`
 
@@ -287,39 +210,23 @@ La cadena HTML del estado "Cargando..." con estilos inline se repite al menos en
 
 ---
 
-# Hallazgos técnicos — frontend/js/pages/
-
-Registrados durante la tarea de documentación de `frontend/js/pages/`.  
-Los hallazgos 20 y 21 fueron corregidos en la misma sesión por instrucción explícita del usuario.
+# Hallazgos técnicos — Seguridad transversal
 
 ---
 
-## 20. `cargarRoles` invocada en empleado.js sin importar ✅ corregido
+## 15. Autenticación basada en header X-Username sin verificación real
 
-**Archivo:** `empleado.js`  
-**Línea original:** `cargarRoles();` dentro del callback `DOMContentLoaded`
+**Archivos:** todos los endpoints que usan `request.headers.get('X-Username')`
 
-`cargarRoles` está importada en `admin.js` desde `modules/usuarios.js`, pero en `empleado.js` nunca fue importada. El dashboard de empleado no tiene tab de usuarios, por lo que la llamada era un residuo de copy-paste desde admin.js.
+El esquema actual de autenticación lee el username del header `X-Username` que envía el cliente, pero no valida que la sesión sea real. Cualquier cliente (incluido un atacante con curl) puede enviar `X-Username: admin` y el backend le creerá. Es una vulnerabilidad de control de acceso roto (OWASP A01:2021).
 
-**Corrección aplicada:** se eliminó la llamada a `cargarRoles()`.
+Detectado al corregir la exposición del username en la URL (`descargar_respaldo`). Esa corrección resolvió la visibilidad en logs y `Referer`, pero no la autenticación en sí, porque se mantuvo consistencia con el resto de la app.
 
----
+**Acción sugerida:** migrar a sesiones de Flask (`session['user_id']`) o JWT en un sprint dedicado. Implica:
+- Modificar el endpoint de login para guardar datos en sesión.
+- Modificar todos los endpoints protegidos para leer de sesión.
+- Modificar el frontend para no enviar `X-Username` manualmente.
+- Manejar logout, expiración y refresco.
 
-## 21. `verificarSesion` invocada en empleado.js sin definir ✅ corregido
-
-**Archivo:** `empleado.js`  
-**Línea original:** `setInterval(verificarSesion, 60000);` dentro del callback `DOMContentLoaded`
-
-La función `verificarSesion` estaba definida únicamente en `admin.js`. En `empleado.js` se la llamaba con `setInterval` pero la función no existía, lo que provocaría un `ReferenceError` en tiempo de ejecución cada vez que el intervalo disparara.
-
-**Corrección aplicada:** se añadió la definición de `verificarSesion` en `empleado.js` con la misma lógica que en `admin.js`, usando `API_BASE_URL` y `getUsuario` ya disponibles en el módulo.
-
----
-
-## 22. Bloque de asignaciones `window.*` duplicado en admin.js ✅ corregido (linter)
-
-**Archivo:** `admin.js`
-
-Las asignaciones globales para `crearRespaldo`, `abrirConfigRespaldos`, `cerrarConfigRespaldos` y `guardarConfigRespaldos` aparecían dos veces. El segundo bloque también incluía `confirmarRestauracion`, `confirmarEliminarRespaldo` y `descargarRespaldo`, que solo estaban en el segundo bloque y por eso no podían eliminarse completo. El linter consolidó ambos bloques en uno solo.
-
-**Corrección aplicada:** el linter eliminó las asignaciones duplicadas y dejó un único bloque completo de respaldos.
+**Prioridad:** prerequisito antes de hacer público el proyecto.  
+**Estimación:** 1 sprint dedicado (no se debe mezclar con otros fixes).

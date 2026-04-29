@@ -92,36 +92,33 @@ def validar_telefono(telefono: str | None, region_default: str = "MX") -> tuple[
     if not telefono:
         return True, None
     
+    # Fase 1 — Validación local con phonenumbers (obligatoria, sin red)
     try:
-        # 1. Validar el formato lógico con la librería instalada
         num_parseado = phonenumbers.parse(telefono, region_default)
         if not phonenumbers.is_valid_number(num_parseado):
             return False, "El número de teléfono no es válido para esta región."
-        
         # WhatsApp requiere formato E.164 sin el '+' (Ej. 522291234567)
         tel_e164 = phonenumbers.format_number(num_parseado, phonenumbers.PhoneNumberFormat.E164)
         tel_wa = tel_e164.replace('+', '')
-        
-        # 2. Verificar existencia de la línea con Abstract API
-        api_key = os.getenv("ABSTRACT_PHONE_API_KEY")
-        
-        if api_key:
+    except phonenumbers.NumberParseException:
+        return False, "Formato de teléfono irreconocible. Revisa los números."
+    except Exception as e:
+        print(f"Advertencia: Error en validación local de teléfono: {e}")
+        return False, "Error al procesar el número de teléfono."
+
+    # Fase 2 — Verificación externa con Abstract API (opcional, failsafe)
+    api_key = os.getenv("ABSTRACT_PHONE_API_KEY")
+    if api_key:
+        try:
             url = f"https://phoneintelligence.abstractapi.com/v1/?api_key={api_key}&phone={tel_e164}"
             respuesta = requests.get(url, timeout=5)
-            
             if respuesta.status_code == 200:
                 datos = respuesta.json()
                 # La API devolverá valid = false si el número está inactivo
                 if datos.get("valid") is False:
                     return False, "La línea telefónica no existe o se encuentra inactiva."
-                    
-        return True, tel_wa
-        
-    except phonenumbers.NumberParseException:
-        return False, "Formato de teléfono irreconocible. Revisa los números."
-    except Exception as e:
-        print(f"Advertencia: Error conectando a la API de teléfonos: {e}")
-        # FIXME: si la excepción ocurre antes de que se defina tel_wa (ej. en
-        # phonenumbers.format_number), esta línea lanzará NameError. Considerar
-        # definir tel_wa = None antes del bloque try o separar los except.
-        return True, tel_wa
+        except Exception as e:
+            print(f"Advertencia: Error conectando a la API de teléfonos: {e}")
+            # Failsafe: el número pasó la validación local, se permite continuar.
+
+    return True, tel_wa

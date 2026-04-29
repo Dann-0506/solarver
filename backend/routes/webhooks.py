@@ -11,6 +11,7 @@ from __future__ import annotations
 from flask import Blueprint, request, jsonify, Response
 from db import get_connection
 import psycopg2.extras
+from services.pagos_service import generar_folio, calcular_estatus_deuda
 
 webhooks_bp = Blueprint('webhooks', __name__)
 
@@ -55,8 +56,7 @@ def recibir_pago_automatico() -> tuple[Response, int]:
         ref_db = cursor.fetchone()
 
         if not ref_db:
-            cursor.execute("SELECT nextval('folio_seq') AS num")
-            folio = f"FOL-HUERF-{cursor.fetchone()['num']}"
+            folio = generar_folio(cursor, 'FOL-HUERF')
 
             cursor.execute("""
                 INSERT INTO "PAGO" ("Id_Deuda", "Monto", "Fecha_Pago", "Metodo_Pago", "Folio", "Estado", "Referencia_Externa")
@@ -72,8 +72,7 @@ def recibir_pago_automatico() -> tuple[Response, int]:
 
         id_deuda = ref_db['Id_Deuda']
 
-        cursor.execute("SELECT nextval('folio_seq') AS num")
-        folio = f"FOL-AUTO-{cursor.fetchone()['num']}"
+        folio = generar_folio(cursor, 'FOL-AUTO')
 
         cursor.execute("""
             INSERT INTO "PAGO" ("Id_Deuda", "Monto", "Fecha_Pago", "Metodo_Pago", "Folio", "Estado", "Referencia_Externa")
@@ -86,15 +85,23 @@ def recibir_pago_automatico() -> tuple[Response, int]:
             WHERE "Id_Referencia" = %s
         """, (ref_db['Id_Referencia'],))
 
-        cursor.execute('SELECT "Saldo_Pendiente" FROM "DEUDA" WHERE "Id_Deuda"=%s', (id_deuda,))
-        deuda = cursor.fetchone()
-        nuevo_saldo = max(float(deuda['Saldo_Pendiente']) - monto_recibido, 0)
-        nuevo_estatus = 'pagado' if nuevo_saldo <= 0 else 'pendiente'
-        
         cursor.execute("""
-            UPDATE "DEUDA" SET "Saldo_Pendiente"=%s, "Estatus"=%s 
+            SELECT d."Saldo_Pendiente", d."Monto_Total", d."Plazo_Meses", d."Interes_Acumulado",
+                   c."Fecha_Pago"
+            FROM   "DEUDA"   d
+            JOIN   "CLIENTE" c ON c."Id_Cliente" = d."Id_Cliente"
+            WHERE  d."Id_Deuda" = %s
+        """, (id_deuda,))
+        deuda         = cursor.fetchone()
+        nuevo_saldo   = max(float(deuda['Saldo_Pendiente']) - monto_recibido, 0)
+        nuevo_interes = max(float(deuda.get('Interes_Acumulado') or 0) - monto_recibido, 0)
+        nuevo_estatus = calcular_estatus_deuda(cursor, id_deuda, nuevo_saldo, deuda)
+
+        cursor.execute("""
+            UPDATE "DEUDA"
+            SET "Saldo_Pendiente"=%s, "Estatus"=%s, "Fecha_Ultimo_Corte"=CURRENT_DATE, "Interes_Acumulado"=%s
             WHERE "Id_Deuda"=%s
-        """, (nuevo_saldo, nuevo_estatus, id_deuda))
+        """, (nuevo_saldo, nuevo_estatus, nuevo_interes, id_deuda))
 
         conn.commit()
         return jsonify({'success': True, 'message': f'Pago automático registrado exitosamente con folio {folio}.'}), 200

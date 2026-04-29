@@ -13,7 +13,6 @@ import { renderPagBtns, mostrarToast } from '../core/utils.js';
 const PER_PAGE  = 8;
 let _pagosData  = [];
 let _pagosPage  = 1;
-let _pagoFolio  = null;
 let _pagoSaldo  = 0;
 let _clientesPago = [];
 
@@ -114,7 +113,7 @@ export async function abrirModalPago(modalId = 'pagoModal') {
     const saldoDisp = document.getElementById('pagoSaldoDisp');
     if (saldoDisp) saldoDisp.textContent = '—';
     const folioDisp = document.getElementById('pagoFolioDisp');
-    if (folioDisp) folioDisp.textContent = 'Generando...';
+    if (folioDisp) folioDisp.textContent = '—';
     const clienteInput = document.getElementById('pagoClienteBuscar');
     if (clienteInput) clienteInput.value = '';
     const clienteHidden = document.getElementById('pagoCliente');
@@ -131,7 +130,6 @@ export async function abrirModalPago(modalId = 'pagoModal') {
     if (mensDisp) mensDisp.textContent = '—';
 
     _pagoSaldo = 0;
-    _pagoFolio = null;
     _clientesPago = [];
 
     try {
@@ -139,15 +137,6 @@ export async function abrirModalPago(modalId = 'pagoModal') {
         const data = await res.json();
         if (data.success) {
             _clientesPago = data.clientes.filter(c => parseFloat(c.Saldo_Pendiente) > 0);
-        }
-    } catch (e) {}
-
-    try {
-        const res  = await fetch(`${API_BASE_URL}/api/pagos/siguiente-folio`);
-        const data = await res.json();
-        if (data.success) {
-            _pagoFolio = data.folio;
-            if (folioDisp) folioDisp.textContent = data.folio;
         }
     } catch (e) {}
 
