@@ -1,10 +1,22 @@
 /**
- * Archivo: frontend/js/core/dashboard_utils.js
- * Propósito: Centralizar la carga de estadísticas y listas del panel de inicio.
+ * Módulo de utilidades del panel de inicio.
+ *
+ * Centraliza la carga de estadísticas de resumen y las listas de actividad
+ * reciente, deudas próximas y recordatorios del dashboard.
  */
 
 import { API_BASE_URL } from './api.js';
 
+/**
+ * Carga y renderiza las estadísticas de resumen en el panel de inicio.
+ *
+ * Espera hasta 5 intentos (150 ms cada uno) a que el DOM esté listo antes
+ * de realizar las peticiones, ya que el HTML puede inyectarse de forma asíncrona.
+ * Obtiene datos de clientes y pagos en paralelo para calcular conteos y cobros
+ * del mes actual.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarStatsDashboard() {
     // Reintento para asegurar que el HTML se haya inyectado
     let intentos = 0;
@@ -47,7 +59,7 @@ export async function cargarStatsDashboard() {
 
             const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalMonto);
 
-            // --- Actualización segura del DOM ---
+            // Actualiza un elemento del DOM de forma segura si existe.
             const safeUpdate = (id, val) => {
                 const el = document.getElementById(id);
                 if (el) el.textContent = val;
@@ -63,25 +75,31 @@ export async function cargarStatsDashboard() {
     }
 }
 
+/**
+ * Carga y renderiza las listas del panel de inicio: actividad reciente,
+ * clientes con deuda próxima y recordatorios enviados.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarListasDashboard() {
-    // 1. Actividad Reciente - Aumentado a 9 registros
+    // 1. Actividad Reciente - Limitado a 9 registros
     const contenedorHistorial = document.getElementById('dashHistorial');
     if (contenedorHistorial) {
         try {
             const resH = await fetch(`${API_BASE_URL}/api/historial`);
             const dataH = await resH.json();
             if (dataH.success && dataH.historial) {
-                const ultimos = dataH.historial.slice(0, 9); // 👈 Aumentado a 9
+                const ultimos = dataH.historial.slice(0, 9);
                 if (ultimos.length > 0) {
                     contenedorHistorial.innerHTML = ultimos.map(r => {
-                        const colorAccion = r.Accion.includes('ELIMINAR') ? 'var(--error)' : 
+                        const colorAccion = r.Accion.includes('ELIMINAR') ? 'var(--error)' :
                                             r.Accion.includes('PAGO') || r.Accion.includes('CREAR') ? 'var(--success)' : 'var(--blue-d)';
                         return `
                             <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 10px; border-bottom:1px solid var(--border)">
                                 <div style="max-width: 75%;">
                                     <div style="font-weight:600; font-size:.84rem; color:var(--text); line-height:1.2">${r.Descripcion}</div>
                                     <div style="font-size:.72rem; color:var(--muted); margin-top:3px;">
-                                        <span style="color:${colorAccion}; font-weight:700; text-transform:uppercase; font-size:.65rem">${r.Accion.replace(/_/g, ' ')}</span> 
+                                        <span style="color:${colorAccion}; font-weight:700; text-transform:uppercase; font-size:.65rem">${r.Accion.replace(/_/g, ' ')}</span>
                                         • ${r.Usuario}
                                     </div>
                                 </div>
@@ -107,7 +125,7 @@ export async function cargarListasDashboard() {
             if (dataC.success && dataC.clientes) {
                 const pendientes = dataC.clientes
                     .filter(c => (c.Estatus || '').toLowerCase() !== 'pagado' && parseFloat(c.Saldo_Pendiente) > 0)
-                    .slice(0, 2); // 👈 Limitado a 2
+                    .slice(0, 2);
 
                 if (pendientes.length > 0) {
                     divDeuda.innerHTML = pendientes.map(c => `
@@ -126,14 +144,14 @@ export async function cargarListasDashboard() {
         } catch (e) { divDeuda.innerHTML = '<div style="text-align:center;padding:20px;color:var(--error)">Error.</div>'; }
     }
 
-    // 3. Recordatorios - Limitado a 2 registros
+    // 3. Recordatorios - Limitado a 1 registro
     const divRec = document.getElementById('dashRecordatorios');
     if (divRec) {
         try {
-            const resR = await fetch(`${API_BASE_URL}/api/recordatorios/historial`); 
+            const resR = await fetch(`${API_BASE_URL}/api/recordatorios/historial`);
             const dataR = await resR.json();
-            const recordatorios = (dataR.recordatorios || []).slice(0, 1); // 👈 Limitado a 2
-            
+            const recordatorios = (dataR.recordatorios || []).slice(0, 1);
+
             if (recordatorios.length > 0) {
                 divRec.innerHTML = recordatorios.map(r => `
                     <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border);">
