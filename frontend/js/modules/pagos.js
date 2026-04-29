@@ -1,11 +1,13 @@
 /**
- * Archivo: frontend/js/modules/pagos.js
- * Propósito: Registro y visualización de pagos. Usado por admin y empleado.
+ * Módulo de registro y visualización de pagos.
+ *
+ * Gestiona la tabla paginada de pagos, el modal de registro de un nuevo
+ * pago y la búsqueda de clientes dentro del modal. Disponible para
+ * administrador y empleado.
  */
 
 import { API_BASE_URL } from '../core/api.js';
 import { getUsuario } from '../core/auth.js';
-// 👈 Actualizamos las importaciones para usar nuestro nuevo sistema
 import { renderPagBtns, mostrarToast } from '../core/utils.js';
 
 const PER_PAGE  = 8;
@@ -15,7 +17,14 @@ let _pagoFolio  = null;
 let _pagoSaldo  = 0;
 let _clientesPago = [];
 
-// ── Cargar lista de pagos ──────────────────────────────────
+/**
+ * Carga la lista de pagos desde la API y la renderiza en la tabla indicada.
+ *
+ * @param {string} [tbodyId='pagosTableBody'] - ID del elemento `<tbody>` destino.
+ * @param {string} [infoId='pagosInfo'] - ID del elemento que muestra el texto de paginación.
+ * @param {string} [btnsId='pagosBtns'] - ID del contenedor de botones de paginación.
+ * @returns {Promise<void>}
+ */
 export async function cargarPagos(tbodyId = 'pagosTableBody', infoId = 'pagosInfo', btnsId = 'pagosBtns') {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
@@ -37,6 +46,13 @@ export async function cargarPagos(tbodyId = 'pagosTableBody', infoId = 'pagosInf
     }
 }
 
+/**
+ * Renderiza la página actual de `_pagosData` en la tabla y actualiza la paginación.
+ *
+ * @param {string} tbodyId - ID del `<tbody>`.
+ * @param {string} infoId - ID del elemento de texto informativo.
+ * @param {string} btnsId - ID del contenedor de botones de paginación.
+ */
 function renderPagosPage(tbodyId, infoId, btnsId) {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
@@ -49,7 +65,7 @@ function renderPagosPage(tbodyId, infoId, btnsId) {
     tbody.innerHTML = data.map(p => {
         const esHuerfano = p.Folio.includes('HUERF');
         const saldo = parseFloat(p.Saldo_Pendiente) || 0;
-        
+
         const colorNombre = esHuerfano ? 'color:var(--error); font-weight:800;' : 'font-weight:600;';
         const colorFondoFila = esHuerfano ? 'background: #FEF9EC;' : '';
         const textoSaldo = esHuerfano ? 'Requiere revisión' : (saldo > 0 ? '$' + saldo.toLocaleString() : 'Saldado');
@@ -71,6 +87,11 @@ function renderPagosPage(tbodyId, infoId, btnsId) {
     renderPagBtns(btnsId, pages, _pagosPage, 'window._cambiarPaginaPagos');
 }
 
+/**
+ * Cambia la página visible de la tabla de pagos.
+ *
+ * @param {number} p - Número de página destino (base 1).
+ */
 export function cambiarPaginaPagos(p) {
     const pages = Math.ceil(_pagosData.length / PER_PAGE) || 1;
     if (p < 1 || p > pages) return;
@@ -78,9 +99,14 @@ export function cambiarPaginaPagos(p) {
     renderPagosPage('pagosTableBody', 'pagosInfo', 'pagosBtns');
 }
 
-// ── Modal de registro de pago ──────────────────────────────
+/**
+ * Abre el modal de registro de pago, inicializa sus campos y precarga
+ * la lista de clientes con saldo pendiente y el siguiente folio disponible.
+ *
+ * @param {string} [modalId='pagoModal'] - ID del modal a abrir.
+ * @returns {Promise<void>}
+ */
 export async function abrirModalPago(modalId = 'pagoModal') {
-    // 👈 Ya no necesitamos ocultarAlerta()
     const fields = ['pagoMonto', 'pagoMetodo'];
     fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const fecha = document.getElementById('pagoFecha');
@@ -128,15 +154,19 @@ export async function abrirModalPago(modalId = 'pagoModal') {
     document.getElementById(modalId).classList.add('open');
 }
 
+// Cierra el modal de registro de pago.
 export function cerrarModalPago(modalId = 'pagoModal') {
     document.getElementById(modalId).classList.remove('open');
 }
 
+// Cierra el modal de comprobante de pago.
 export function cerrarComprobante(modalId = 'comprobanteModal') {
     document.getElementById(modalId).classList.remove('open');
 }
 
-// ── Búsqueda de clientes en el modal ──────────────────────
+/**
+ * Filtra la lista de clientes disponibles en el modal según el texto ingresado.
+ */
 export function filtrarClientesPago() {
     const q     = document.getElementById('pagoClienteBuscar')?.value.toLowerCase() || '';
     const lista = document.getElementById('pagoClienteLista');
@@ -159,6 +189,17 @@ export function filtrarClientesPago() {
     lista.style.display = 'block';
 }
 
+/**
+ * Selecciona un cliente en el modal de pago y precalcula la mensualidad sugerida
+ * incluyendo intereses moratorios acumulados.
+ *
+ * @param {number} id - ID del cliente seleccionado.
+ * @param {string} nombre - Nombre completo del cliente.
+ * @param {number} saldo - Saldo pendiente actual del cliente.
+ * @param {number} montoTotal - Monto total del contrato.
+ * @param {number} plazoMeses - Plazo del contrato en meses.
+ * @param {number} [interesAcumulado=0] - Interés moratorio acumulado.
+ */
 export function seleccionarClientePago(id, nombre, saldo, montoTotal, plazoMeses, interesAcumulado = 0) {
     const clienteHidden = document.getElementById('pagoCliente');
     if (clienteHidden) clienteHidden.value = id;
@@ -168,27 +209,31 @@ export function seleccionarClientePago(id, nombre, saldo, montoTotal, plazoMeses
     if (listaEl) listaEl.style.display = 'none';
     const selEl = document.getElementById('pagoClienteSeleccionado');
     if (selEl) { selEl.style.display = 'block'; selEl.textContent = `✓ ${nombre}`; }
-    
+
     _pagoSaldo = parseFloat(saldo);
     const saldoDisp = document.getElementById('pagoSaldoDisp');
     if (saldoDisp) saldoDisp.textContent = '$' + _pagoSaldo.toLocaleString('es-MX', { minimumFractionDigits: 2 });
-    
+
     const plazo = parseInt(plazoMeses) || 12;
     const mensualidadBase = (parseFloat(montoTotal) || 0) / plazo;
     const interes = parseFloat(interesAcumulado) || 0;
     const mensualidadConMora = mensualidadBase + interes;
-    
+
     const mensDisp = document.getElementById('pagoMensualidadDisp');
     if (mensDisp) mensDisp.textContent = '$' + mensualidadConMora.toLocaleString('es-MX', { minimumFractionDigits: 2 });
-    
+
     const inputMonto = document.getElementById('pagoMonto');
     if (inputMonto) {
         inputMonto.value = Math.min(mensualidadConMora, _pagoSaldo).toFixed(2);
     }
-    
+
     verificarMonto();
 }
 
+/**
+ * Valida que el monto ingresado no supere el saldo pendiente del cliente seleccionado.
+ * Muestra una advertencia y bloquea el botón de guardar si el monto es excesivo.
+ */
 export function verificarMonto() {
     const monto  = parseFloat(document.getElementById('pagoMonto')?.value) || 0;
     const advEl  = document.getElementById('pagoAdvertencia');
@@ -205,7 +250,12 @@ export function verificarMonto() {
     }
 }
 
-// ── Guardar pago ───────────────────────────────────────────
+/**
+ * Valida los campos del modal y envía la petición de registro de pago a la API.
+ * Si el registro es exitoso, muestra el comprobante y recarga la tabla de pagos.
+ *
+ * @returns {Promise<void>}
+ */
 export async function guardarPago() {
     const idCliente = document.getElementById('pagoCliente')?.value;
     const monto     = parseFloat(document.getElementById('pagoMonto')?.value);
@@ -213,7 +263,6 @@ export async function guardarPago() {
     const fecha     = document.getElementById('pagoFecha')?.value;
     const usuario   = getUsuario();
 
-    // 👈 Reemplazamos todos los mostrarAlerta por mostrarToast
     if (!idCliente) { mostrarToast('Selecciona un cliente.', 'error'); return; }
     if (!monto || monto <= 0) { mostrarToast('El monto debe ser mayor a $0.', 'error'); return; }
     if (!metodo)  { mostrarToast('Selecciona un método de pago.', 'error'); return; }
@@ -230,7 +279,7 @@ export async function guardarPago() {
         });
         const data = await res.json();
         if (data.success) {
-            mostrarToast('Pago registrado correctamente', 'success'); // 👈 Añadimos feedback positivo
+            mostrarToast('Pago registrado correctamente', 'success');
             const nombre = document.getElementById('pagoClienteBuscar')?.value || '';
             cerrarModalPago();
             // Rellenar comprobante
@@ -249,16 +298,16 @@ export async function guardarPago() {
             document.getElementById('comprobanteModal').classList.add('open');
             cargarPagos();
         } else {
-            mostrarToast(data.message, 'error'); // 👈
+            mostrarToast(data.message, 'error');
         }
     } catch (e) {
-        mostrarToast('No se pudo conectar con el servidor.', 'error'); // 👈
+        mostrarToast('No se pudo conectar con el servidor.', 'error');
     } finally {
         if (btn) { btn.textContent = 'Confirmar pago'; btn.disabled = false; }
     }
 }
 
-// ── Cerrar lista al hacer click fuera ─────────────────────
+// Cierra la lista de sugerencias al hacer clic fuera del campo de búsqueda.
 document.addEventListener('click', (e) => {
     const lista = document.getElementById('pagoClienteLista');
     if (lista && !lista.contains(e.target) && e.target.id !== 'pagoClienteBuscar') {

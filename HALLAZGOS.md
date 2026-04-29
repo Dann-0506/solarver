@@ -222,3 +222,65 @@ Ningún ítem fue corregido en la lógica; el hallazgo 15 implicó corrección d
 El comentario original decía `// Limitado a 2 registros`, pero el código aplicaba `.slice(0, 1)`. El comentario fue corregido para reflejar lo que el código realmente hace (`Limitado a 1 registro`), pero la intención original es ambigua: podría ser un error de límite o un cambio deliberado sin actualizar el comentario.
 
 **Acción sugerida:** confirmar si el límite correcto es 1 o 2 y ajustar el código o dejarlo documentado intencionalmente.
+
+---
+
+# Hallazgos técnicos — frontend/js/modules/
+
+Registrados durante la tarea de documentación de `frontend/js/modules/`.  
+Ningún ítem fue corregido (salvo el catch vacío de `respaldos.js`, corregido por instrucción explícita); todos los demás están pendientes de decisión y acción.
+
+---
+
+## 16. `event.target` del objeto global en reportes.js
+
+**Archivo:** `reportes.js`  
+**Funciones:** `descargarReporte()`, `enviarEstadosDeCuenta()`
+
+Ambas funciones obtienen la referencia al botón clickeado a través del objeto global `event` en lugar de recibirlo como parámetro. Esta forma de acceder al evento es no estándar, no funciona en entornos con `strict mode` habilitado y complica las pruebas unitarias (habría que simular el objeto global).
+
+```javascript
+// Problemático — depende de window.event implícito
+const btn = event.target;
+```
+
+**Acción sugerida:** hacer que los `onclick` del HTML pasen el botón explícitamente:
+```html
+onclick="descargarReporte('pdf', this)"
+```
+y recibir el elemento como segundo parámetro en la función.
+
+---
+
+## 17. Importación sin usar — getIniciales en recordatorios.js
+
+**Archivo:** `recordatorios.js`  
+**Línea:** `import { getIniciales, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';`
+
+`getIniciales` se importa pero no se llama en ninguna función del módulo. Es probable que sea un residuo de una versión anterior donde `renderClientesRec` mostraba avatares con iniciales.
+
+**Acción sugerida:** eliminar `getIniciales` de la importación si no se planea usarlo.
+
+---
+
+## 18. Patrón de paginación triplicado en módulos
+
+**Archivos:** `clientes.js` → `cambiarPagina`, `pagos.js` → `cambiarPaginaPagos`, `historial.js` → `cambiarPaginaHistorial`
+
+Las tres funciones tienen lógica idéntica: validar rango `(p < 1 || p > pages)`, actualizar la variable de página y llamar a la función de render correspondiente. Un bug o cambio de criterio en la guardia deberá replicarse en los tres sitios.
+
+**Acción sugerida:** extraer un helper genérico en `core/utils.js`, por ejemplo:
+
+```javascript
+function cambiarPagina(p, total, perPage, paginaRef, renderFn) { ... }
+```
+
+---
+
+## 19. HTML de estado de carga duplicado en múltiples módulos
+
+**Archivos:** `clientes.js`, `pagos.js`, `conciliaciones.js`, `recordatorios.js`, `reportes.js`, `respaldos.js`, `historial.js`
+
+La cadena HTML del estado "Cargando..." con estilos inline se repite al menos en 7 módulos con variaciones mínimas (distinto `colspan`, distinto texto). Cualquier cambio de estilo o texto tendrá que aplicarse en cada aparición.
+
+**Acción sugerida:** añadir a `core/utils.js` un helper `setTableLoading(tbodyId, colspan, mensaje)` que centralice la generación de esta fila.

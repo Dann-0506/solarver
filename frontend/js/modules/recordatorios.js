@@ -1,16 +1,22 @@
 /**
- * Archivo: frontend/js/modules/recordatorios.js
- * Propósito: Envío manual de recordatorios de pago (US-09 y US-12).
+ * Módulo de envío de recordatorios de pago.
+ *
+ * Carga la lista de clientes con deuda pendiente, permite enviar avisos
+ * individuales vía SMS o correo y consulta el historial de envíos
+ * registrados en el sistema.
  */
 
 import { API_BASE_URL } from '../core/api.js';
 import { getUsuario } from '../core/auth.js';
-// 👈 Importamos nuestras nuevas utilidades globales
 import { getIniciales, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';
 
 let _recClientes = [];
 
-// ── Cargar clientes con deuda ──────────────────────────────
+/**
+ * Carga desde la API la lista de clientes con deuda pendiente y la renderiza.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarClientesRec() {
     const lista = document.getElementById('recClientesLista');
     if (!lista) return;
@@ -30,10 +36,13 @@ export async function cargarClientesRec() {
     }
 }
 
+/**
+ * Renderiza la lista de clientes con deuda en el contenedor `recClientesLista`.
+ */
 function renderClientesRec() {
     const lista = document.getElementById('recClientesLista');
     if (!lista) return;
-    
+
     lista.innerHTML = _recClientes.map(c => {
         const deuda = parseFloat(c.Saldo_Pendiente) || 0;
         return `
@@ -50,22 +59,35 @@ function renderClientesRec() {
     }).join('');
 }
 
+/**
+ * Abre el modal de envío de recordatorio para un cliente específico.
+ *
+ * @param {number} idCliente - ID del cliente al que se enviará el recordatorio.
+ * @param {string} nombreCliente - Nombre del cliente, mostrado en el encabezado del modal.
+ */
 export function abrirModalRecordatorio(idCliente, nombreCliente) {
     const hiddenId = document.getElementById('recClienteId');
     const labelNombre = document.getElementById('recClienteNombre');
-    
+
     if (hiddenId) hiddenId.value = idCliente;
     if (labelNombre) labelNombre.textContent = nombreCliente;
-    
+
     const modal = document.getElementById('recordatorioModal');
     if (modal) modal.classList.add('open');
 }
 
+// Cierra el modal de envío de recordatorio.
 export function cerrarModalRecordatorio() {
     const modal = document.getElementById('recordatorioModal');
     if (modal) modal.classList.remove('open');
 }
 
+/**
+ * Valida el canal seleccionado, solicita confirmación y envía el recordatorio
+ * al cliente activo en el modal.
+ *
+ * @returns {Promise<void>}
+ */
 export async function enviarRecordatorio() {
     const idCliente = document.getElementById('recClienteId')?.value;
     const canal = document.getElementById('recCanal')?.value;
@@ -77,7 +99,7 @@ export async function enviarRecordatorio() {
     }
 
     const confirmado = await confirmarAccionGlobal(
-        'Enviar Recordatorio', 
+        'Enviar Recordatorio',
         `¿Deseas procesar y enviar el recordatorio vía ${canal.toUpperCase()}?`
     );
     if (!confirmado) return;
@@ -92,20 +114,20 @@ export async function enviarRecordatorio() {
         const res = await fetch(`${API_BASE_URL}/api/recordatorios/enviar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // 👈 CORRECCIÓN: Se cambia 'id_cliente' por 'ids_clientes' y se envía como ARREGLO
-            body: JSON.stringify({ 
-                ids_clientes: [parseInt(idCliente)], // El servidor espera una lista []
-                canal: canal, 
-                id_usuario: usuario?.id 
+            // El servidor espera un arreglo de IDs, no un escalar.
+            body: JSON.stringify({
+                ids_clientes: [parseInt(idCliente)],
+                canal: canal,
+                id_usuario: usuario?.id
             })
         });
-        
+
         const data = await res.json();
-        
+
         if (data.success) {
             mostrarToast('Recordatorio enviado con éxito.', 'success');
             cerrarModalRecordatorio();
-            cargarHistorialRec(); 
+            cargarHistorialRec();
         } else {
             mostrarToast(data.message, 'error');
         }
@@ -119,7 +141,11 @@ export async function enviarRecordatorio() {
     }
 }
 
-// ── Historial de recordatorios ─────────────────────────────
+/**
+ * Carga y renderiza el historial de recordatorios enviados.
+ *
+ * @returns {Promise<void>}
+ */
 export async function cargarHistorialRec() {
     const lista = document.getElementById('recHistorialLista');
     if (!lista) return;
@@ -145,6 +171,6 @@ export async function cargarHistorialRec() {
     }
 }
 
-window._abrirModalRecordatorio = abrirModalRecordatorio;
-window._enviarRecordatorio = enviarRecordatorio;
+window._abrirModalRecordatorio  = abrirModalRecordatorio;
+window._enviarRecordatorio      = enviarRecordatorio;
 window._cerrarModalRecordatorio = cerrarModalRecordatorio;
