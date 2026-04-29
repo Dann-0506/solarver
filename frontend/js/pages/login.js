@@ -1,18 +1,25 @@
 /**
- * Archivo: frontend/js/pages/login.js
- * Propósito: Manejar el formulario de inicio de sesión.
+ * Entry point de la vista de inicio de sesión.
+ *
+ * Controla el formulario de login, la validación de campos, la
+ * comunicación con el endpoint de autenticación y la redirección
+ * post-login según el rol del usuario.
+ *
+ * Módulos importados:
+ *   - core/api.js: URL base de la API REST.
+ *   - core/auth.js: persistencia de datos del usuario en sesión.
  */
 
-import { API_BASE_URL } from '../core/api.js';       // CORRECCIÓN: extensión .js obligatoria en módulos ES
-import { guardarUsuario } from '../core/auth.js';     // CORRECCIÓN: extensión .js obligatoria
+import { API_BASE_URL } from '../core/api.js';       // NOTE: la extensión .js es obligatoria en importaciones de módulos ES nativos
+import { guardarUsuario } from '../core/auth.js';     // NOTE: la extensión .js es obligatoria en importaciones de módulos ES nativos
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // CORRECCIÓN: 'loginForm' como string, no como variable sin definir
+    // NOTE: se pasa el id como cadena al getElementById, no como variable
     const formLogin        = document.getElementById('loginForm');
     const inputUsername    = document.getElementById('username');
     const inputPassword    = document.getElementById('password');
-    // CORRECCIÓN: el id en el HTML es 'btnTogglePass', no 'btnTogglePassword'
+    // NOTE: el id en el HTML es 'btnTogglePass'; el nombre de variable es más descriptivo para legibilidad
     const btnTogglePassword = document.getElementById('btnTogglePass');
     const btnSubmit        = document.getElementById('btnLogin');
 
@@ -21,10 +28,22 @@ document.addEventListener('DOMContentLoaded', () => {
     inputUsername.addEventListener('input', hideAlert);
     inputPassword.addEventListener('input', hideAlert);
 
+    /**
+     * Alterna la visibilidad del campo de contraseña entre 'password' y 'text'.
+     */
     function togglePassword() {
         inputPassword.type = inputPassword.type === 'password' ? 'text' : 'password';
     }
 
+    /**
+     * Maneja el envío del formulario de inicio de sesión.
+     *
+     * Valida que los campos no estén vacíos, realiza la petición al
+     * endpoint de autenticación y redirige al usuario según la respuesta.
+     *
+     * @param {Event} e - Evento submit del formulario.
+     * @returns {Promise<void>}
+     */
     async function handleLogin(e) {
         e.preventDefault();
 
@@ -68,6 +87,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Muestra el bloque de alerta con el mensaje y tipo indicados.
+     *
+     * @param {string} msg - Texto a mostrar en la alerta.
+     * @param {string} [type='error'] - Tipo de alerta: 'error' o 'success'.
+     */
     function showAlert(msg, type = 'error') {
         const alertEl  = document.getElementById('alertError');
         const alertMsg = document.getElementById('alertMsg');
@@ -76,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alertEl.style.display = 'flex';
     }
 
+    // Oculta el bloque de alerta del formulario.
     function hideAlert() {
         document.getElementById('alertError').style.display = 'none';
     }
