@@ -192,3 +192,33 @@ Ningún ítem fue corregido; todos están pendientes de decisión y acción.
 El módulo `psycopg2.extras` se importa en `db.py` pero no se usa en ningún punto del archivo. Si algún otro módulo lo importa transitivamente vía `db`, eso constituye un acoplamiento implícito que puede romperse si se reorganizan los imports.
 
 **Acción sugerida:** si `psycopg2.extras` se necesita en otro módulo (por ejemplo para usar `RealDictCursor`), importarlo directamente en ese módulo. Si no se usa en ningún lado, eliminar la línea.
+
+---
+
+# Hallazgos técnicos — frontend/js/core/
+
+Registrados durante la tarea de documentación de `frontend/js/core/`.  
+Ningún ítem fue corregido en la lógica; el hallazgo 15 implicó corrección del comentario inconsistente, no del código.
+
+---
+
+## 14. Importación sin usar en auth.js
+
+**Archivo:** `auth.js`  
+**Línea:** `import { API_BASE_URL } from './api.js';`
+
+`API_BASE_URL` se importa pero no se usa en ninguna de las cinco funciones del archivo. Es probable que sea un import residual de una versión anterior donde `auth.js` realizaba llamadas directas a la API.
+
+**Acción sugerida:** eliminar la importación si no se planea usar `API_BASE_URL` en este módulo. Si se prevé usarla en el futuro, agregar una llamada real o un comentario que justifique el import.
+
+---
+
+## 15. Inconsistencia entre comentario y código en cargarListasDashboard
+
+**Archivo:** `dashboard_utils.js`  
+**Función:** `cargarListasDashboard()`  
+**Sección:** Recordatorios (bloque 3)
+
+El comentario original decía `// Limitado a 2 registros`, pero el código aplicaba `.slice(0, 1)`. El comentario fue corregido para reflejar lo que el código realmente hace (`Limitado a 1 registro`), pero la intención original es ambigua: podría ser un error de límite o un cambio deliberado sin actualizar el comentario.
+
+**Acción sugerida:** confirmar si el límite correcto es 1 o 2 y ajustar el código o dejarlo documentado intencionalmente.

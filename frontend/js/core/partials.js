@@ -1,13 +1,17 @@
 /**
- * Archivo: frontend/js/core/partials.js
- * Propósito: Cargar fragmentos HTML compartidos en los dashboards.
- * Evita duplicar tabs idénticos entre admin.html y empleado.html.
+ * Módulo de carga de partials HTML compartidos.
+ *
+ * Centraliza la inyección de fragmentos HTML reutilizables en los dashboards,
+ * evitando duplicar tabs idénticos entre admin.html y empleado.html.
  */
 
 /**
  * Carga un partial HTML en un contenedor del DOM.
- * @param {string} containerId - ID del div contenedor
- * @param {string} partialPath - Ruta relativa al archivo HTML parcial
+ *
+ * @param {string} containerId - ID del div contenedor donde se inyectará el HTML.
+ * @param {string} partialPath - Ruta relativa al archivo HTML parcial a cargar.
+ * @returns {Promise<void>}
+ * @throws {Error} Si la respuesta HTTP no es exitosa.
  */
 export async function loadPartial(containerId, partialPath) {
     const container = document.getElementById(containerId);
@@ -23,8 +27,11 @@ export async function loadPartial(containerId, partialPath) {
 }
 
 /**
- * Carga todos los partials compartidos de ambos dashboards.
- * Llama a esto antes de inicializar los módulos.
+ * Carga todos los partials compartidos de ambos dashboards en paralelo.
+ *
+ * Debe invocarse antes de inicializar cualquier módulo que dependa de estos tabs.
+ *
+ * @returns {Promise<void>}
  */
 export async function loadSharedTabs() {
     await Promise.all([
