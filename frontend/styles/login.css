@@ -21,6 +21,7 @@ body {
   overflow: hidden;
 }
 
+/* Círculos decorativos para dar profundidad al panel de branding */
 .left-panel::before {
   content: '';
   position: absolute;

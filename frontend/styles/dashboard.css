@@ -1,3 +1,7 @@
+/* Estilos del dashboard compartido entre la vista de administrador y empleado.
+   Define layout (sidebar, topbar, contenido), componentes reutilizables
+   (tablas, botones, modales, paginación) y tarjetas de estadísticas. */
+
 body {
     display: flex;
     min-height: 100vh;
@@ -12,6 +16,7 @@ body {
   overflow: hidden; z-index: 100;
 }
 
+/* Círculo decorativo en la esquina superior derecha del sidebar */
 .sidebar::before {
   content: '';
   position: absolute;
@@ -98,6 +103,7 @@ body {
 .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
 .nav-item:hover { color: var(--white); background: rgba(255,255,255,0.05); }
 .nav-item.active { color: var(--white); background: rgba(255,122,31,0.14); }
+/* Barra naranja de 3px en el borde izquierdo del ítem activo */
 .nav-item.active::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0;
   width: 3px; background: var(--orange); border-radius: 0 2px 2px 0;
@@ -196,6 +202,7 @@ body {
   transition: transform .2s, box-shadow .2s;
 }
 .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(14,79,138,0.1); }
+/* Círculo decorativo semitransparente en la esquina inferior derecha de cada tarjeta */
 .stat-card::after { content: ''; position: absolute; right: -20px; bottom: -20px; width: 80px; height: 80px; border-radius: 50%; opacity: .06; }
 .stat-card.blue::after   { background: var(--blue); }
 .stat-card.orange::after { background: var(--orange); }

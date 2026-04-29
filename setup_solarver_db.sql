@@ -1,6 +1,10 @@
 -- ═══════════════════════════════════════════════════════════
---  SolarVer – Script de configuración inicial de la BD
---  Ejecutar conectado al servidor PostgreSQL
+--  SolarVer – Script de configuración inicial de la base de datos
+--
+--  Crea la base de datos, todas las tablas del sistema,
+--  las relaciones de clave foránea y los datos de prueba
+--  necesarios para el entorno de desarrollo.
+--  Ejecutar como superusuario de PostgreSQL.
 -- ═══════════════════════════════════════════════════════════
 
 -- 1. Crear la base de datos
@@ -15,12 +19,14 @@ CREATE DATABASE "SolarVer";
 --  2. TABLAS 
 -- ═══════════════════════════════════════════════════════════
 
+-- Catálogo de roles del sistema (Administrador, Empleado).
 CREATE TABLE "ROL" (
     "Id_Rol"      SERIAL PRIMARY KEY,
     "Nombre_Rol"  VARCHAR(50)  NOT NULL,
     "Descripcion" VARCHAR(150)
 );
 
+-- Usuarios del sistema con credenciales, rol asignado y bloqueo por intentos fallidos.
 CREATE TABLE "USUARIO" (
     "Id_Usuario"        SERIAL PRIMARY KEY,
     "Nombre"            VARCHAR(100) NOT NULL,
@@ -37,6 +43,7 @@ CREATE TABLE "USUARIO" (
         CHECK ("Intentos_Fallidos" BETWEEN 0 AND 3)
 );
 
+-- Clientes registrados con datos de contacto y día de corte mensual (5 o 17).
 CREATE TABLE "CLIENTE" (
     "Id_Cliente"      SERIAL PRIMARY KEY,
     "Nombre_Completo" VARCHAR(150) NOT NULL,
@@ -48,6 +55,7 @@ CREATE TABLE "CLIENTE" (
     "Estado"          VARCHAR(20)  DEFAULT 'Activo'
 );
 
+-- Deudas activas o liquidadas de cada cliente, con plazo, saldo pendiente e intereses acumulados.
 CREATE TABLE "DEUDA" (
     "Id_Deuda"                  SERIAL PRIMARY KEY,
     "Id_Cliente"                INTEGER,
@@ -60,6 +68,7 @@ CREATE TABLE "DEUDA" (
     "Fecha_Ultima_Penalizacion" DATE
 );
 
+-- Abonos realizados contra una deuda, con folio único y método de pago.
 CREATE TABLE "PAGO" (
     "Id_Pago"     SERIAL PRIMARY KEY,
     "Id_Deuda"    INTEGER,
@@ -71,6 +80,8 @@ CREATE TABLE "PAGO" (
     "Referencia_Externa"  VARCHAR(255)
 );
 
+-- Referencias de pago generadas para conciliación bancaria automática.
+-- El estado refleja si la referencia fue pagada, conciliada manualmente o expiró.
 CREATE TABLE "REFERENCIAPAGO" (
     "Id_Referencia" SERIAL PRIMARY KEY,
     "Id_Deuda"      INTEGER NOT NULL,
@@ -80,6 +91,7 @@ CREATE TABLE "REFERENCIAPAGO" (
     "Estado"        VARCHAR(30) DEFAULT 'Pendiente' CHECK ("Estado" IN ('Pendiente', 'Pagado_Automatico', 'Conciliado_Manual', 'Expirado'))
 );
 
+-- Auditoría de acciones realizadas sobre clientes por los usuarios del sistema.
 CREATE TABLE "HISTORIALCAMBIOS" (
     "Id_Historial" SERIAL PRIMARY KEY,
     "Id_Cliente"   INTEGER,
@@ -89,6 +101,7 @@ CREATE TABLE "HISTORIALCAMBIOS" (
     "Fecha"        TIMESTAMP
 );
 
+-- Avisos de pago enviados a clientes por canal (correo, SMS) con su estado de entrega.
 CREATE TABLE "RECORDATORIO" (
     "Id_Recordatorio" SERIAL PRIMARY KEY,
     "Id_Cliente"      INTEGER,
@@ -207,6 +220,7 @@ SELECT setval('folio_seq', 500004);
 -- ═══════════════════════════════════════════════════════════
 
 SELECT 'Tablas creadas:' AS info;
+-- Filtra por 'public' para excluir tablas internas del sistema de PostgreSQL.
 SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;
 
 SELECT 'Deudas:' AS info;

@@ -1,3 +1,8 @@
+/* Estilos base compartidos por todas las vistas de SolarVer.
+   Define variables globales, reset, tipografía del documento
+   y el sistema de toasts (notificaciones emergentes). */
+
+/* Variables del sistema de diseño: paleta de color y dimensiones globales */
 :root {
     --orange:    #FF7A1F;
     --orange-d:  #E8601A;
@@ -16,12 +21,14 @@
     --sidebar-w: 250px;
 }
 
+/* Reset y modelo de caja */
 *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
+/* Configuración base del documento */
 html, body {
     height: 100%;
     overflow-x: hidden; /* Evita el desplazamiento horizontal accidental */
@@ -37,6 +44,7 @@ body {
     overflow-y: auto;
 }
 
+/* Toast: notificaciones emergentes (éxito, error, advertencia) */
 #toast-container {
     position: fixed;
     top: 24px;
