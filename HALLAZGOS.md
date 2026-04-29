@@ -116,3 +116,61 @@ nuevo_estatus = 'pagado' if nuevo_saldo <= 0 else 'pendiente'
 En cambio, `registrar_pago()` en `pagos.py` incluye la lógica completa (considera `'atrasado'` según el día del corte y el monto pagado en el periodo). Las conciliaciones nunca producen el estatus `'atrasado'` aunque el pago llegue tarde.
 
 **Acción sugerida:** alinear la lógica de estatus de los tres flujos de pago (manual, conciliación, webhook), o documentar intencionalmente que los pagos conciliados siempre resetean a `'pendiente'` si hay saldo.
+
+---
+
+# Hallazgos técnicos — backend/services/
+
+Registrados durante la tarea de documentación de `backend/services/`.  
+Ningún ítem fue corregido; todos están pendientes de decisión y acción.
+El hallazgo 12 ya está marcado con `# FIXME` en el código.
+
+---
+
+## 9. Importación sin usar en notificaciones_service
+
+**Archivo:** `notificaciones_service.py`  
+**Línea:** `from reportlab.lib.pagesizes import letter`
+
+Este import existe en el archivo pero `letter` no se usa en ningún punto de `notificaciones_service.py`. Solo se utiliza en `documentos_service.py`, que es quien genera los PDFs.
+
+**Acción sugerida:** eliminar la importación.
+
+---
+
+## 10. `except` desnudo en generar_excel_reporte
+
+**Archivo:** `documentos_service.py`  
+**Función:** `generar_excel_reporte()`
+
+El bloque `try/except` que ajusta el ancho de columnas usa `except:` sin tipo, lo que captura también `SystemExit`, `KeyboardInterrupt` y `GeneratorExit`. Un error crítico del intérprete quedaría silenciado y el archivo Excel seguiría generándose con datos posiblemente corruptos.
+
+```python
+except:
+    pass
+```
+
+**Acción sugerida:** cambiar a `except Exception: pass`.
+
+---
+
+## 11. Commit por cliente dentro del loop en procesar_cobros_automaticos
+
+**Archivo:** `scheduler_service.py`  
+**Función:** `procesar_cobros_automaticos()`
+
+La función hace `conn.commit()` dentro del `for` por cada cliente procesado. Si el cliente N se confirma pero el envío del cliente N+1 falla y provoca `conn.rollback()`, la inserción en `REFERENCIAPAGO` del cliente N ya fue persistida aunque el proceso general no termine bien. Los registros de referencia huérfanos (sin notificación enviada) deberían considerarse en la lógica de reintento.
+
+**Acción sugerida:** evaluar si es intencional el commit individual por cliente, o si conviene acumular todos los cambios y confirmar en un único commit al final del loop.
+
+---
+
+## 12. Posible NameError en validar_telefono
+
+**Archivo:** `validators_service.py`  
+**Función:** `validar_telefono()`  
+**Marcador en código:** `# FIXME` (línea ~124)
+
+El bloque `except Exception as e:` retorna `True, tel_wa`, pero `tel_wa` se define después de `phonenumbers.format_number()`. Si esta llamada lanzara una excepción no prevista, `tel_wa` no estaría definido y se produciría un `NameError` dentro del propio handler.
+
+**Acción sugerida:** inicializar `tel_wa = None` antes del bloque `try`, o separar el `except` genérico del `except NumberParseException` para que solo cubra el bloque de la llamada a la API.
