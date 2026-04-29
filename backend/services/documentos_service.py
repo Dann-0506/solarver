@@ -1,4 +1,10 @@
-# Archivo: backend/services/documentos_service.py
+"""Módulo de generación de documentos exportables para Solarver.
+
+Expone funciones para crear estados de cuenta en PDF, reportes tabulares
+en PDF y Excel, e instrucciones de pago con código QR, todos con diseño
+membretado bajo la identidad visual de Solarver.
+"""
+from __future__ import annotations
 import io
 import base64
 import pandas as pd
@@ -19,8 +25,19 @@ BRAND_DARK = colors.HexColor('#0E4F8A')
 BRAND_ORANGE = colors.HexColor('#FF7A1F')
 BRAND_BG = colors.HexColor('#F0F4F8')
 
-def pie_de_pagina(canvas, doc):
-    """Dibuja el pie de página con el número de página dinámico."""
+def pie_de_pagina(canvas: canvas.Canvas, doc: SimpleDocTemplate) -> None:
+    """Dibuja el pie de página con número de página y marca corporativa.
+
+    Diseñada para usarse como callback de ReportLab en ``onFirstPage``
+    y ``onLaterPages`` al construir documentos con ``SimpleDocTemplate``.
+
+    Args:
+        canvas: Objeto Canvas de ReportLab que recibe los comandos de dibujo.
+            El parámetro sombrea el módulo importado del mismo nombre; con
+            ``from __future__ import annotations`` la anotación se resuelve
+            correctamente en el ámbito global del módulo.
+        doc: Documento activo que provee el número de página actual.
+    """
     canvas.saveState()
     canvas.setFont('Helvetica', 9)
     canvas.setFillColor(colors.gray)
@@ -28,8 +45,19 @@ def pie_de_pagina(canvas, doc):
     canvas.drawRightString(landscape(letter)[0] - 30, 20, f"Página {doc.page}")
     canvas.restoreState()
 
-def generar_pdf_base64(cliente):
-    """Genera el PDF del Estado de Cuenta mensual con diseño membretado y marcas de agua."""
+def generar_pdf_base64(cliente: dict) -> str:
+    """Genera el estado de cuenta mensual en PDF y lo codifica en Base64.
+
+    Produce un PDF de una página con encabezado membretado, marca de agua
+    condicional según el estatus del cliente y resumen financiero.
+
+    Args:
+        cliente: Diccionario con los datos del cliente. Claves esperadas:
+            ``Cliente``, ``Estatus``, ``Saldo_Pendiente``, ``Dia_Pago``.
+
+    Returns:
+        Cadena Base64 que representa el contenido binario del PDF generado.
+    """
     output = io.BytesIO()
     p = canvas.Canvas(output, pagesize=letter)
     width, height = letter
@@ -88,7 +116,7 @@ def generar_pdf_base64(cliente):
     p.drawString(70, height - 235, f"Día de Corte: {cliente['Dia_Pago']} de cada mes")
     p.drawString(width/2 + 20, height - 235, f"Estatus actual: {cliente['Estatus'].upper()}")
     
-    # Resaltar saldo dependiente de si hay deuda o no
+    # Resaltar en rojo si hay deuda pendiente, verde si el saldo está saldado
     p.setFont("Helvetica-Bold", 14)
     p.setFillColor(colors.red if saldo > 0 else colors.green)
     p.drawString(70, height - 260, f"Saldo Pendiente: ${saldo:,.2f} MXN")
@@ -104,8 +132,20 @@ def generar_pdf_base64(cliente):
     output.close()
     return base64.b64encode(pdf_bytes).decode('utf-8')
 
-def generar_excel_reporte(datos):
-    """Genera un archivo Excel con formato nativo (Filtros, Congelación y Moneda)."""
+def generar_excel_reporte(datos: list[dict]) -> io.BytesIO:
+    """Genera un reporte en Excel con estilos, filtros automáticos y formato de moneda.
+
+    Aplica encabezados con color de marca, congela la primera fila,
+    activa auto-filtros y detecta columnas monetarias para aplicar
+    el formato numérico nativo de Excel.
+
+    Args:
+        datos: Lista de diccionarios con los registros del reporte.
+            Cada clave del diccionario se convierte en columna.
+
+    Returns:
+        Objeto ``BytesIO`` listo para enviarse como descarga al cliente.
+    """
     df = pd.DataFrame(datos)
     output = io.BytesIO()
     
@@ -147,8 +187,8 @@ def generar_excel_reporte(datos):
                         max_length = len(str(cell.value))
                 except:
                     pass
-            # Margen de holgura extra (+4)
-            worksheet.column_dimensions[col_letter].width = min(max_length + 4, 50) 
+            # Margen de holgura extra (+4) para que el texto no quede pegado al borde
+            worksheet.column_dimensions[col_letter].width = min(max_length + 4, 50)
             
         # Congelar la primera fila y activar auto-filtros
         worksheet.freeze_panes = "A2"
@@ -157,8 +197,20 @@ def generar_excel_reporte(datos):
     output.seek(0)
     return output
 
-def generar_pdf_reporte(datos, tipo):
-    """Genera un reporte tabular en PDF con Zebra-Striping y paginación dinámica."""
+def generar_pdf_reporte(datos: list[dict], tipo: str) -> io.BytesIO:
+    """Genera un reporte tabular en PDF con zebra-striping y paginación dinámica.
+
+    Soporta dos tipos de reporte: pagos realizados y cobranza. La estructura
+    de columnas y los datos mostrados cambian según el tipo solicitado.
+
+    Args:
+        datos: Lista de diccionarios con los registros del reporte.
+        tipo: Tipo de reporte. Usar ``'realizados'`` para pagos completados
+            o cualquier otro valor para el reporte de cobranza pendiente.
+
+    Returns:
+        Objeto ``BytesIO`` listo para enviarse como descarga al cliente.
+    """
     output = io.BytesIO()
     doc = SimpleDocTemplate(output, pagesize=landscape(letter),
                             rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -176,7 +228,7 @@ def generar_pdf_reporte(datos, tipo):
     # Subtítulo (Periodo y Generación)
     sub_style = styles['Normal']
     sub_style.textColor = colors.gray
-    sub_style.alignment = 1 # Centrado
+    sub_style.alignment = 1  # Centrado
     periodo = "Últimos 30 días" if tipo == 'realizados' else "Estado al corte actual"
     elements.append(Paragraph(f"Periodo: {periodo} &nbsp;&nbsp;|&nbsp;&nbsp; Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", sub_style))
     elements.append(Spacer(1, 25))
@@ -242,8 +294,26 @@ def generar_pdf_reporte(datos, tipo):
     output.seek(0)
     return output
 
-def generar_pdf_instrucciones_pago(cliente_nombre, monto, clave_referencia, fecha_limite):
-    """Genera un PDF con las instrucciones de pago e incluye un Código QR."""
+def generar_pdf_instrucciones_pago(
+    cliente_nombre: str,
+    monto: float,
+    clave_referencia: str,
+    fecha_limite: str,
+) -> str:
+    """Genera un PDF con las instrucciones de transferencia bancaria e incluye un código QR.
+
+    Produce un PDF de una página con los datos CLABE, el monto exacto a pagar
+    y la referencia única que el cliente debe incluir en su transferencia.
+
+    Args:
+        cliente_nombre: Nombre completo del cliente destinatario.
+        monto: Monto exacto a pagar en pesos mexicanos.
+        clave_referencia: Referencia única de pago (ej. ``SOL-12-A8F9``).
+        fecha_limite: Fecha límite de pago en formato ``DD/MM/YYYY``.
+
+    Returns:
+        Cadena Base64 que representa el contenido binario del PDF generado.
+    """
     output = io.BytesIO()
     p = canvas.Canvas(output, pagesize=letter)
     width, height = letter

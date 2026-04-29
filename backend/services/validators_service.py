@@ -1,15 +1,33 @@
-# Archivo: backend/services/validators_service.py
-# Servicio específico para validación de correos y teléfonos utilizando Abstract API
+"""Módulo de validación de datos de contacto para Solarver.
 
+Valida correos electrónicos y números de teléfono en dos pasos: primero
+una verificación local de formato y después una consulta a APIs externas
+(Abstract API) para comprobar la entregabilidad o existencia real del dato.
+Si el servicio externo no está disponible, el módulo permite el registro
+como failsafe para no bloquear el flujo de la aplicación.
+"""
+from __future__ import annotations
 import phonenumbers
 import requests
 import os
 import re
 
-def validar_correo(correo):
-    """
-    Verifica la validez del correo usando una API externa profesional.
-    Evita problemas de bloqueo del puerto 25 y filtros anti-spam.
+def validar_correo(correo: str | None) -> tuple[bool, str | None]:
+    """Valida el formato y la entregabilidad de un correo electrónico.
+
+    Realiza dos verificaciones en cascada: primero valida el formato con una
+    expresión regular y, si hay API key configurada, consulta la API de
+    reputación de Abstract para verificar que la bandeja sea accesible.
+    Si el servicio externo falla, permite el correo para no bloquear el flujo.
+
+    Args:
+        correo: Dirección de correo a validar. Si es ``None`` o vacía,
+            se asume válida (campo opcional).
+
+    Returns:
+        Tupla ``(válido, resultado)`` donde ``resultado`` es el correo
+        normalizado en minúsculas si es válido, el mensaje de error si no
+        lo es, o ``None`` si el campo estaba vacío.
     """
     if not correo:
         return True, None
@@ -23,8 +41,7 @@ def validar_correo(correo):
     try:
         api_key = os.getenv("ABSTRACT_EMAIL_API_KEY")
         
-        # Si hay llave configurada, usamos la API profesional
-        # Si hay llave configurada, usamos la API profesional de Reputación
+        # Si hay llave configurada, usamos la API profesional de reputación
         if api_key:
             url = f"https://emailreputation.abstractapi.com/v1/?api_key={api_key}&email={correo}"
             
@@ -51,10 +68,26 @@ def validar_correo(correo):
         # Failsafe: Permitimos guardar si el servicio externo falla
         return True, correo.lower()
 
-def validar_telefono(telefono, region_default="MX"):
-    """
-    Verifica la estructura del teléfono y opcionalmente comprueba su existencia
-    mediante una API de validación externa.
+
+def validar_telefono(telefono: str | None, region_default: str = "MX") -> tuple[bool, str | None]:
+    """Valida el formato y la existencia de un número de teléfono.
+
+    Realiza dos verificaciones en cascada: primero valida la estructura con
+    la librería ``phonenumbers`` y, si hay API key configurada, consulta la
+    API de inteligencia telefónica de Abstract para verificar si la línea está
+    activa. El número válido se retorna en formato E.164 sin el signo ``+``,
+    listo para usar con WhatsApp o Infobip.
+
+    Args:
+        telefono: Número de teléfono a validar. Acepta formatos locales e
+            internacionales. Si es ``None`` o vacío, se asume válido.
+        region_default: Código de región ISO 3166-1 alfa-2 para interpretar
+            números locales. Por defecto ``'MX'`` (México).
+
+    Returns:
+        Tupla ``(válido, resultado)`` donde ``resultado`` es el número en
+        formato E.164 sin ``+`` si es válido, el mensaje de error si no lo es,
+        o ``None`` si el campo estaba vacío.
     """
     if not telefono:
         return True, None
@@ -88,4 +121,7 @@ def validar_telefono(telefono, region_default="MX"):
         return False, "Formato de teléfono irreconocible. Revisa los números."
     except Exception as e:
         print(f"Advertencia: Error conectando a la API de teléfonos: {e}")
+        # FIXME: si la excepción ocurre antes de que se defina tel_wa (ej. en
+        # phonenumbers.format_number), esta línea lanzará NameError. Considerar
+        # definir tel_wa = None antes del bloque try o separar los except.
         return True, tel_wa

@@ -1,6 +1,10 @@
-#  Archivo: backend/services/scheduler_service.py
-#  Servicio específico para tareas programadas (scheduler) como actualización de estatus e intereses.
+"""Módulo de tareas programadas para Solarver.
 
+Expone las tareas que el scheduler ejecuta periódicamente: actualización
+de estatus e intereses moratorios de deudas, generación de referencias de
+cobro automático y respaldos programados de la base de datos.
+"""
+from __future__ import annotations
 from db import get_connection
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -15,11 +19,22 @@ import json
 
 load_dotenv()
 
-def actualizar_estatus_deudas(fecha_simulada=None):
-    """
-    Tarea automática diaria:
-    Evalúa el estatus de cada deuda, y aplica un interés moratorio del 5%
-    si el cliente se atrasa (máximo una vez por mes).
+def actualizar_estatus_deudas(fecha_simulada: datetime | None = None) -> int:
+    """Evalúa y actualiza el estatus de todas las deudas activas.
+
+    Tarea automática diaria. Determina si cada deuda está pagada, pendiente
+    o atrasada comparando los pagos del periodo con la mensualidad requerida.
+    Si el estatus resulta ``'atrasado'`` y aún no se cobró penalización este
+    mes, aplica un interés moratorio del 5% sobre la cuota y lo registra en
+    el historial de cambios para auditoría.
+
+    Args:
+        fecha_simulada: Fecha a usar en lugar de ``datetime.now()``.
+            Útil para pruebas o simulaciones de corte. Si es ``None``,
+            usa la fecha y hora actuales en zona horaria de México.
+
+    Returns:
+        Número de cuentas actualizadas en esta ejecución.
     """
     tz       = pytz.timezone('America/Mexico_City')
     hoy      = fecha_simulada if fecha_simulada else datetime.now(tz)
@@ -93,7 +108,7 @@ def actualizar_estatus_deudas(fecha_simulada=None):
             # 6. Actualizar si hubo cambio de estatus o si se aplicó multa
             if nuevo_estatus != d['Estatus'] or se_penalizo:
                 
-                # Si se penalizó, actualizamos la fecha, si no, mantenemos la que tenía
+                # Si se penalizó actualizamos la fecha; si no, mantenemos la anterior
                 query_update = """
                     UPDATE "DEUDA"
                     SET "Estatus"=%s, "Saldo_Pendiente"=%s, "Interes_Acumulado"=%s, "Fecha_Ultimo_Corte"=CURRENT_DATE
@@ -133,8 +148,22 @@ def actualizar_estatus_deudas(fecha_simulada=None):
         if conn:   conn.close()
 
 
-def procesar_cobros_automaticos(fecha_simulada=None):
-    """Busca clientes que vencen en 5 días, genera una referencia única y delega el envío de instrucciones."""
+def procesar_cobros_automaticos(fecha_simulada: datetime | None = None) -> int:
+    """Genera referencias de cobro y notifica a clientes que vencen en 5 días.
+
+    Solo actúa cuando el día objetivo (hoy + 5) coincide con uno de los días
+    de corte válidos del sistema: 5 o 17. Para cada cliente afectado crea
+    una referencia única en la tabla ``REFERENCIAPAGO`` y delega el envío del
+    PDF de instrucciones al servicio de notificaciones.
+
+    Args:
+        fecha_simulada: Fecha a usar en lugar de ``datetime.now()``.
+            Útil para pruebas o simulaciones de corte. Si es ``None``,
+            usa la fecha y hora actuales en zona horaria de México.
+
+    Returns:
+        Número de referencias enviadas exitosamente en esta ejecución.
+    """
     tz = pytz.timezone('America/Mexico_City')
     hoy = fecha_simulada if fecha_simulada else datetime.now(tz)
     
@@ -201,7 +230,15 @@ def procesar_cobros_automaticos(fecha_simulada=None):
         if cursor: cursor.close()
         if conn: conn.close()
 
-def procesar_respaldos_automaticos():
+
+def procesar_respaldos_automaticos() -> None:
+    """Genera un respaldo de la base de datos según la configuración de ``config.json``.
+
+    Lee la frecuencia y hora programadas en ``backups/config.json``. Solo
+    ejecuta si la hora actual coincide exactamente con la configurada y si no
+    existe ya un archivo de respaldo del mismo día. Soporta frecuencias
+    ``'diario'``, ``'semanal'`` (domingos) y ``'mensual'`` (día 1 de cada mes).
+    """
     base_dir = os.path.dirname(os.path.dirname(__file__))
     backup_dir = os.path.join(base_dir, 'backups')
     config_path = os.path.join(backup_dir, 'config.json')
@@ -209,6 +246,7 @@ def procesar_respaldos_automaticos():
     if not os.path.exists(backup_dir):
         os.makedirs(backup_dir)
 
+    # Valores por defecto si no existe o falla la lectura del archivo de configuración
     config = {'frecuencia': 'diario', 'hora': '02:00'}
     if os.path.exists(config_path):
         try:
@@ -229,6 +267,7 @@ def procesar_respaldos_automaticos():
     if frecuencia == 'mensual' and ahora.day != 1:
         return
 
+    # Verificar si ya se generó un respaldo hoy para evitar duplicados en el mismo día
     prefijo_hoy = f"solarver_backup_auto_{ahora.strftime('%Y%m%d')}"
     for archivo in os.listdir(backup_dir):
         if archivo.startswith(prefijo_hoy):
