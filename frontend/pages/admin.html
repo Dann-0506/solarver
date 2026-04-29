@@ -10,6 +10,7 @@
 </head>
 <body>
 
+<!-- Sección: Barra lateral de navegación -->
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-name">Solar<span>Ver</span></div>
@@ -72,6 +73,7 @@
   </div>
 </aside>
 
+<!-- Sección: Contenido principal del dashboard -->
 <main class="main">
   <div class="topbar">
     <div class="topbar-left">
@@ -87,6 +89,7 @@
     <div id="tab-notificaciones" class="tab-content" style="display:none"></div>
     <div id="tab-perfil"         class="tab-content" style="display:none"></div>
 
+    <!-- Tab: Conciliación de transferencias (contenido inline; el resto de tabs se carga desde partials) -->
     <div id="tab-conciliaciones" class="tab-content" style="display:none">
       <div class="section-header" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
         <div>
@@ -120,6 +123,7 @@
       </div>
     </div>
 
+    <!-- Tab: Directorio de empleados -->
     <div id="tab-usuarios" class="tab-content" style="display:none">
       <div class="section-header">
         <h3>Directorio de Empleados <span id="userCountLabel" style="font-size:.8rem;color:var(--muted);font-weight:400"></span></h3>
@@ -137,6 +141,7 @@
       </div>
     </div>
 
+    <!-- Tab: Historial de cambios sobre clientes -->
     <div id="tab-historial" class="tab-content" style="display:none">
       <div class="section-header" style="margin-bottom:20px">
         <h3>Historial de cambios <span id="historialCount" style="font-size:.8rem;color:var(--muted);font-weight:400"></span></h3>
@@ -164,6 +169,7 @@
       </div>
     </div>
 
+    <!-- Tab: Generación y exportación de reportes -->
     <div id="tab-reportes" class="tab-content" style="display:none">
       <div class="section-header" style="margin-bottom:24px">
         <h3>Generación de Reportes</h3>
@@ -222,6 +228,7 @@
       </div>
     </div>
 
+    <!-- Tab: Gestión de respaldos automáticos y manuales -->
     <div id="tab-respaldos" class="tab-content" style="display:none">
       <div class="section-header">
         <h3>Gestión de respaldos</h3>
@@ -253,6 +260,7 @@
   </div>
 </main>
 
+<!-- Modal: Crear nuevo empleado -->
 <div class="modal-overlay" id="userModal">
   <div class="modal">
     <button class="modal-close" onclick="cerrarModalUsuario()">
@@ -273,6 +281,7 @@
   </div>
 </div>
 
+<!-- Modal: Editar datos de un empleado existente -->
 <div class="modal-overlay" id="editUserModal">
   <div class="modal">
     <button class="modal-close" onclick="cerrarEditarModal()">
@@ -298,6 +307,7 @@
   </div>
 </div>
 
+<!-- Modal: Configuración de frecuencia y hora de respaldos automáticos -->
 <div class="modal-overlay" id="configRespaldoModal" style="display:none;">
   <div class="modal" style="max-width: 400px;">
     <button class="modal-close" onclick="window.cerrarConfigRespaldos()">
