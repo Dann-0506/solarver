@@ -248,9 +248,6 @@ def eliminar_respaldo(nombre: str) -> tuple[Response, int]:
 def descargar_respaldo(nombre: str) -> Response | tuple[Response, int]:
     """Descarga un archivo de respaldo como adjunto.
 
-    La autenticación se lee del parámetro URL ``?u=`` en lugar del header
-    porque las descargas GET desde el navegador no permiten headers personalizados.
-
     Args:
         nombre: Nombre del archivo a descargar (sin ruta).
 
@@ -259,8 +256,7 @@ def descargar_respaldo(nombre: str) -> Response | tuple[Response, int]:
         (respuesta JSON, 403) si no es administrador; (respuesta JSON, 404)
         si el archivo no existe.
     """
-    # Autenticación vía parámetro URL porque las descargas GET del navegador no envían headers
-    username = request.args.get('u')
+    username = request.headers.get('X-Username')
     if not es_admin(username):
         return jsonify({'success': False, 'message': 'Acceso denegado. Se requiere rol de Administrador.'}), 403
 

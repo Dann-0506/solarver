@@ -228,14 +228,37 @@ export async function confirmarEliminarRespaldo(nombre) {
 }
 
 /**
- * Inicia la descarga del archivo de respaldo indicado redirigiendo al endpoint de descarga.
+ * Descarga el archivo de respaldo indicado usando fetch para poder enviar el header de autenticación.
  *
  * @param {string} nombre - Nombre del archivo de respaldo a descargar.
+ * @returns {Promise<void>}
  */
-export function descargarRespaldo(nombre) {
+export async function descargarRespaldo(nombre) {
     const usuario = getUsuario();
     if (!usuario) return;
-    window.location.href = `${API_BASE_URL}/api/respaldos/descargar/${nombre}?u=${usuario.username}`;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/respaldos/descargar/${encodeURIComponent(nombre)}`, {
+            method: 'GET',
+            headers: getAuthHeaders(false)
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            mostrarToast(data.message || 'Error al descargar el respaldo.', 'error');
+            return;
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nombre;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        mostrarToast('Error de conexión al descargar el respaldo.', 'error');
+    }
 }
 
 /**

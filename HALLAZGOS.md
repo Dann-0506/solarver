@@ -1,7 +1,7 @@
 # Hallazgos técnicos — backend/routes/
 
 Registrados durante la tarea de documentación de `backend/routes/`.  
-Ningún ítem fue corregido; todos están pendientes de decisión y acción.
+Todos están pendientes de decisión y acción.
 
 ---
 
@@ -91,19 +91,7 @@ Git reporta que estos dos archivos tienen finales de línea CRLF, distintos al r
 
 ---
 
-## 7. Autenticación por parámetro URL en descarga de respaldos
-
-**Archivo:** `respaldos.py`  
-**Función:** `descargar_respaldo()`  
-**Ruta:** `GET /api/respaldos/descargar/<nombre>?u=<username>`
-
-El username del administrador viaja en la URL en texto claro (`?u=...`). Esto lo expone en logs del servidor, historial del navegador y encabezados `Referer`.
-
-**Acción sugerida:** evaluar una solución de descarga con token de corta duración (pre-signed URL o token JWT de un solo uso) en lugar del username directamente en la query string.
-
----
-
-## 8. Estatus de deuda simplificado en conciliación
+## 7. Estatus de deuda simplificado en conciliación
 
 **Archivos:** `conciliaciones.py`, `webhooks.py`
 
@@ -122,12 +110,12 @@ En cambio, `registrar_pago()` en `pagos.py` incluye la lógica completa (conside
 # Hallazgos técnicos — backend/services/
 
 Registrados durante la tarea de documentación de `backend/services/`.  
-Ningún ítem fue corregido; todos están pendientes de decisión y acción.
-El hallazgo 12 ya está marcado con `# FIXME` en el código.
+Todos están pendientes de decisión y acción.  
+El hallazgo 11 ya está marcado con `# FIXME` en el código.
 
 ---
 
-## 9. Importación sin usar en notificaciones_service
+## 8. Importación sin usar en notificaciones_service
 
 **Archivo:** `notificaciones_service.py`  
 **Línea:** `from reportlab.lib.pagesizes import letter`
@@ -138,7 +126,7 @@ Este import existe en el archivo pero `letter` no se usa en ningún punto de `no
 
 ---
 
-## 10. `except` desnudo en generar_excel_reporte
+## 9. `except` desnudo en generar_excel_reporte
 
 **Archivo:** `documentos_service.py`  
 **Función:** `generar_excel_reporte()`
@@ -154,7 +142,7 @@ except:
 
 ---
 
-## 11. Commit por cliente dentro del loop en procesar_cobros_automaticos
+## 10. Commit por cliente dentro del loop en procesar_cobros_automaticos
 
 **Archivo:** `scheduler_service.py`  
 **Función:** `procesar_cobros_automaticos()`
@@ -165,7 +153,7 @@ La función hace `conn.commit()` dentro del `for` por cada cliente procesado. Si
 
 ---
 
-## 12. Posible NameError en validar_telefono
+## 11. Posible NameError en validar_telefono
 
 **Archivo:** `validators_service.py`  
 **Función:** `validar_telefono()`  
@@ -180,11 +168,11 @@ El bloque `except Exception as e:` retorna `True, tel_wa`, pero `tel_wa` se defi
 # Hallazgos técnicos — backend/app.py y backend/db.py
 
 Registrados durante la tarea de documentación de `backend/app.py` y `backend/db.py`.  
-Ningún ítem fue corregido; todos están pendientes de decisión y acción.
+Todos están pendientes de decisión y acción.
 
 ---
 
-## 13. Importación sin usar — psycopg2.extras en db.py
+## 12. Importación sin usar — psycopg2.extras en db.py
 
 **Archivo:** `db.py`  
 **Línea:** `import psycopg2.extras`
@@ -198,11 +186,11 @@ El módulo `psycopg2.extras` se importa en `db.py` pero no se usa en ningún pun
 # Hallazgos técnicos — frontend/js/core/
 
 Registrados durante la tarea de documentación de `frontend/js/core/`.  
-Ningún ítem fue corregido en la lógica; el hallazgo 15 implicó corrección del comentario inconsistente, no del código.
+El hallazgo 14 implicó corrección del comentario inconsistente, no del código.
 
 ---
 
-## 14. Importación sin usar en auth.js
+## 13. Importación sin usar en auth.js
 
 **Archivo:** `auth.js`  
 **Línea:** `import { API_BASE_URL } from './api.js';`
@@ -213,7 +201,7 @@ Ningún ítem fue corregido en la lógica; el hallazgo 15 implicó corrección d
 
 ---
 
-## 15. Inconsistencia entre comentario y código en cargarListasDashboard
+## 14. Inconsistencia entre comentario y código en cargarListasDashboard
 
 **Archivo:** `dashboard_utils.js`  
 **Función:** `cargarListasDashboard()`  
@@ -228,14 +216,15 @@ El comentario original decía `// Limitado a 2 registros`, pero el código aplic
 # Hallazgos técnicos — frontend/js/modules/
 
 Registrados durante la tarea de documentación de `frontend/js/modules/`.  
-Ningún ítem fue corregido (salvo el catch vacío de `respaldos.js`, corregido por instrucción explícita); todos los demás están pendientes de decisión y acción.
+Todos están pendientes de decisión y acción (salvo el catch vacío de `respaldos.js`, corregido por instrucción explícita).
 
 ---
 
-## 16. `event.target` del objeto global en reportes.js
+## 15. `event.target` del objeto global en reportes.js
 
 **Archivo:** `reportes.js`  
-**Funciones:** `descargarReporte()`, `enviarEstadosDeCuenta()`
+**Funciones:** `descargarReporte()`, `enviarEstadosDeCuenta()`  
+**Marcadores en código:** `// TODO: revisar comportamiento` (líneas 138 y 341)
 
 Ambas funciones obtienen la referencia al botón clickeado a través del objeto global `event` en lugar de recibirlo como parámetro. Esta forma de acceder al evento es no estándar, no funciona en entornos con `strict mode` habilitado y complica las pruebas unitarias (habría que simular el objeto global).
 
@@ -252,7 +241,7 @@ y recibir el elemento como segundo parámetro en la función.
 
 ---
 
-## 17. Importación sin usar — getIniciales en recordatorios.js
+## 16. Importación sin usar — getIniciales en recordatorios.js
 
 **Archivo:** `recordatorios.js`  
 **Línea:** `import { getIniciales, mostrarToast, confirmarAccionGlobal } from '../core/utils.js';`
@@ -263,7 +252,7 @@ y recibir el elemento como segundo parámetro en la función.
 
 ---
 
-## 18. Patrón de paginación triplicado en módulos
+## 17. Patrón de paginación triplicado en módulos
 
 **Archivos:** `clientes.js` → `cambiarPagina`, `pagos.js` → `cambiarPaginaPagos`, `historial.js` → `cambiarPaginaHistorial`
 
@@ -277,7 +266,7 @@ function cambiarPagina(p, total, perPage, paginaRef, renderFn) { ... }
 
 ---
 
-## 19. HTML de estado de carga duplicado en múltiples módulos
+## 18. HTML de estado de carga duplicado en múltiples módulos
 
 **Archivos:** `clientes.js`, `pagos.js`, `conciliaciones.js`, `recordatorios.js`, `reportes.js`, `respaldos.js`, `historial.js`
 
@@ -287,39 +276,23 @@ La cadena HTML del estado "Cargando..." con estilos inline se repite al menos en
 
 ---
 
-# Hallazgos técnicos — frontend/js/pages/
-
-Registrados durante la tarea de documentación de `frontend/js/pages/`.  
-Los hallazgos 20 y 21 fueron corregidos en la misma sesión por instrucción explícita del usuario.
+# Hallazgos técnicos — Seguridad transversal
 
 ---
 
-## 20. `cargarRoles` invocada en empleado.js sin importar ✅ corregido
+## 19. Autenticación basada en header X-Username sin verificación real
 
-**Archivo:** `empleado.js`  
-**Línea original:** `cargarRoles();` dentro del callback `DOMContentLoaded`
+**Archivos:** todos los endpoints que usan `request.headers.get('X-Username')`
 
-`cargarRoles` está importada en `admin.js` desde `modules/usuarios.js`, pero en `empleado.js` nunca fue importada. El dashboard de empleado no tiene tab de usuarios, por lo que la llamada era un residuo de copy-paste desde admin.js.
+El esquema actual de autenticación lee el username del header `X-Username` que envía el cliente, pero no valida que la sesión sea real. Cualquier cliente (incluido un atacante con curl) puede enviar `X-Username: admin` y el backend le creerá. Es una vulnerabilidad de control de acceso roto (OWASP A01:2021).
 
-**Corrección aplicada:** se eliminó la llamada a `cargarRoles()`.
+Detectado al corregir la exposición del username en la URL (`descargar_respaldo`). Esa corrección resolvió la visibilidad en logs y `Referer`, pero no la autenticación en sí, porque se mantuvo consistencia con el resto de la app.
 
----
+**Acción sugerida:** migrar a sesiones de Flask (`session['user_id']`) o JWT en un sprint dedicado. Implica:
+- Modificar el endpoint de login para guardar datos en sesión.
+- Modificar todos los endpoints protegidos para leer de sesión.
+- Modificar el frontend para no enviar `X-Username` manualmente.
+- Manejar logout, expiración y refresco.
 
-## 21. `verificarSesion` invocada en empleado.js sin definir ✅ corregido
-
-**Archivo:** `empleado.js`  
-**Línea original:** `setInterval(verificarSesion, 60000);` dentro del callback `DOMContentLoaded`
-
-La función `verificarSesion` estaba definida únicamente en `admin.js`. En `empleado.js` se la llamaba con `setInterval` pero la función no existía, lo que provocaría un `ReferenceError` en tiempo de ejecución cada vez que el intervalo disparara.
-
-**Corrección aplicada:** se añadió la definición de `verificarSesion` en `empleado.js` con la misma lógica que en `admin.js`, usando `API_BASE_URL` y `getUsuario` ya disponibles en el módulo.
-
----
-
-## 22. Bloque de asignaciones `window.*` duplicado en admin.js ✅ corregido (linter)
-
-**Archivo:** `admin.js`
-
-Las asignaciones globales para `crearRespaldo`, `abrirConfigRespaldos`, `cerrarConfigRespaldos` y `guardarConfigRespaldos` aparecían dos veces. El segundo bloque también incluía `confirmarRestauracion`, `confirmarEliminarRespaldo` y `descargarRespaldo`, que solo estaban en el segundo bloque y por eso no podían eliminarse completo. El linter consolidó ambos bloques en uno solo.
-
-**Corrección aplicada:** el linter eliminó las asignaciones duplicadas y dejó un único bloque completo de respaldos.
+**Prioridad:** prerequisito antes de hacer público el proyecto.  
+**Estimación:** 1 sprint dedicado (no se debe mezclar con otros fixes).
