@@ -6,8 +6,6 @@ Este proyecto es desarrollado como parte de la materia **Ingenieria de Software*
 
 **Nota:** Este es un sistema de simulación creado con fines estrictamente educativos. **No es un producto comercial**.
 
----
-
 ## Descripción del Proyecto
 
 SolarVer es un prototipo de plataforma web diseñada para simular la administración de clientes, pagos y recordatorios de un negocio. El objetivo es poner en práctica conocimientos de desarrollo web, base de datos y planeación de proyectos.
@@ -61,4 +59,8 @@ Para revisar y hacer funcionar este proyecto, sigue estos pasos:
 
 7. **Probar la aplicación:**
     Abre el navegador y visita **http://localhost:5000** (o el puerto que indique la terminal).
-    
+
+## Colaboradores
+
+- Daniel Landero Arias
+- Eduardo Novoa Siles
