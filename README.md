@@ -1,6 +1,6 @@
-# SolarVer - Proyecto Universitario
+# GestorPagos-ERP - Proyecto Universitario
 
-¡Bienvenido al repositorio de **SolarVer**!
+¡Bienvenido al repositorio de **GestorPagos-ERP**!
 
 Este proyecto es desarrollado como parte de la materia **Ingenieria de Software** en el **Instituto Técnológico de Veracruz**.
 
@@ -8,7 +8,7 @@ Este proyecto es desarrollado como parte de la materia **Ingenieria de Software*
 
 ## Descripción del Proyecto
 
-SolarVer es un prototipo de plataforma web diseñada para simular la administración de clientes, pagos y recordatorios de un negocio. El objetivo es poner en práctica conocimientos de desarrollo web, base de datos y planeación de proyectos.
+GestorPagos-ERP es un prototipo de plataforma web diseñada para simular la administración de clientes, pagos y recordatorios de un negocio. El objetivo es poner en práctica conocimientos de desarrollo web, base de datos y planeación de proyectos.
 
 Se cuenta con dos roles de simulación:
 - **Administrador:** Vista global de ingresos y gestión de usuarios.
@@ -32,35 +32,40 @@ Para revisar y hacer funcionar este proyecto, sigue estos pasos:
 ### Pasos para ejecutar
 
 1. **Clonar el repositorio:**
-    git clone [https://github.com/Dann-0506/solarver](https://github.com/Dann-0506/solarver)
-
-2. **Configurar el entorno virtual:**
-    cd /ruta/del/proyecto
+   ```bash
+    git clone [https://github.com/Dann-0506/GestorPagos-ERP](https://github.com/Dann-0506/GestorPagos-ERP)
+    ```
+3. **Configurar el entorno virtual:**
+   ```bash
+   cd /ruta/del/proyecto
     python -m venv venv
 
     #En Windows:
     venv\scripts\activate
     #En Linux/Mac:
     source venv/bin/activate
-
-3. **Instalar dependencias:**
+    ```
+4. **Instalar dependencias:**
+   ```bash
     pip install -r requirements.text
-
-4. **Crear la base de datos:**
-    psql -U 'usuario' -f setup_solarver_db.sql
-
-5. **Configurar el entorno:**
-    python setup_solarver_dev.py 
+    ```
+6. **Crear la base de datos:**
+    ```bash
+   psql -U 'usuario' -f setup_solarver_db.sql
+    ```
+8. **Configurar el entorno:**
+    ```bash
+   python setup_solarver_dev.py 
     (NOTA: Se recomienda seleccionar la opción 3 si es la primera vez que se ejecuta).
-
-6. **Iniciar el servidor local**
+    ```
+10. **Iniciar el servidor local**
+    ```bash
     cd backend
     python app.py
-
-7. **Probar la aplicación:**
+    ```
+12. **Probar la aplicación:**
     Abre el navegador y visita **http://localhost:5000** (o el puerto que indique la terminal).
 
 ## Colaboradores
-
 - Daniel Landero Arias
 - Eduardo Novoa Siles
